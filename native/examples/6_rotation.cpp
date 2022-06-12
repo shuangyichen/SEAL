@@ -20,24 +20,52 @@ void example_rotation_bfv()
 
     EncryptionParameters parms(scheme_type::bfv);
 
-    size_t poly_modulus_degree = 8192;
+    size_t poly_modulus_degree = 4096;
     parms.set_poly_modulus_degree(poly_modulus_degree);
     parms.set_coeff_modulus(CoeffModulus::BFVDefault(poly_modulus_degree));
     parms.set_plain_modulus(PlainModulus::Batching(poly_modulus_degree, 20));
-
+    // cout << PlainModulus::Batching(poly_modulus_degree, 20)<< endl;
     SEALContext context(parms);
+    cout <<context.using_keyswitching()<< endl;
     print_parameters(context);
     cout << endl;
 
+
+
+    //Generate common public keys
+
     KeyGenerator keygen(context);
-    SecretKey secret_key = keygen.secret_key();
-    PublicKey public_key;
-    keygen.create_public_key(public_key);
-    RelinKeys relin_keys;
-    keygen.create_relin_keys(relin_keys);
-    Encryptor encryptor(context, public_key);
+    int party_num = 2;
+    vector<SecretKey> SKS(party_num);
+    vector<PublicKey> PKS(party_num);
+    keygen.gen_secret_key(SKS[0]);
+    keygen.create_public_key_with_sk(PKS[0],SKS[0]);
+    for (int i = 1; i <party_num; ++i) {
+        keygen.gen_secret_key(SKS[i]);
+        keygen.create_public_key_with_same_c1(PKS[0],PKS[i],SKS[i]);
+    }
+    PublicKey CPK;
+    // SecretKey CSK;
+    keygen.create_common_public_key(CPK,PKS,party_num);
+    // keygen.create_common_secret_key(CSK,SKS,3);
+
+
+
+
+
+    // SecretKey secret_key = keygen.secret_key();
+    // PublicKey public_key;
+    // keygen.create_public_key(public_key);
+    // RelinKeys relin_keys;
+    // keygen.create_relin_keys(relin_keys);
+    // Encryptor encryptor(context, public_key);
+    // Evaluator evaluator(context);
+    // Decryptor decryptor(context, secret_key);
+
+    //Set encryptor & evaluator
+    Encryptor encryptor(context, CPK);
     Evaluator evaluator(context);
-    Decryptor decryptor(context, secret_key);
+    // Decryptor decryptor(context, CSK);
 
     BatchEncoder batch_encoder(context);
     size_t slot_count = batch_encoder.slot_count();
@@ -67,56 +95,64 @@ void example_rotation_bfv()
     batch_encoder.encode(pod_matrix, plain_matrix);
     Ciphertext encrypted_matrix;
     encryptor.encrypt(plain_matrix, encrypted_matrix);
-    cout << "    + Noise budget in fresh encryption: " << decryptor.invariant_noise_budget(encrypted_matrix) << " bits"
-         << endl;
-    cout << endl;
+    // cout << "    + Noise budget in fresh encryption: " << decryptor.invariant_noise_budget(encrypted_matrix) << " bits"
+    //      << endl;
+    // cout << endl;
 
     /*
     Rotations require yet another type of special key called `Galois keys'. These
     are easily obtained from the KeyGenerator.
     */
-    GaloisKeys galois_keys;
-    keygen.create_galois_keys(galois_keys);
+    // GaloisKeys galois_keys;
+    // keygen.create_galois_keys(galois_keys);
 
-    /*
-    Now rotate both matrix rows 3 steps to the left, decrypt, decode, and print.
-    */
-    print_line(__LINE__);
-    cout << "Rotate rows 3 steps left." << endl;
-    evaluator.rotate_rows_inplace(encrypted_matrix, 3, galois_keys);
-    Plaintext plain_result;
-    cout << "    + Noise budget after rotation: " << decryptor.invariant_noise_budget(encrypted_matrix) << " bits"
-         << endl;
-    cout << "    + Decrypt and decode ...... Correct." << endl;
-    decryptor.decrypt(encrypted_matrix, plain_result);
-    batch_encoder.decode(plain_result, pod_matrix);
-    print_matrix(pod_matrix, row_size);
+
+    vector<GaloisKeys> galois_keys_set(party_num);
+    for (int i = 0; i <party_num; ++i) {
+        keygen.create_galois_keys_with_sk(galois_keys_set[i],SKS[i]);
+    }
+    GaloisKeys cRotKeys;
+    keygen.gen_common_galois_keys(galois_keys_set,party_num,cRotKeys);
+    // /*
+    // Now rotate both matrix rows 3 steps to the left, decrypt, decode, and print.
+    // */
+    // print_line(__LINE__);
+    // cout << "Rotate rows 3 steps left." << endl;
+    // // evaluator.rotate_rows_inplace(encrypted_matrix, 3, galois_keys);
+    // evaluator.rotate_rows_inplace(encrypted_matrix, 3, cRotKeys);
+    // Plaintext plain_result;
+    // cout << "    + Noise budget after rotation: " << decryptor.invariant_noise_budget(encrypted_matrix) << " bits"
+    //      << endl;
+    // cout << "    + Decrypt and decode ...... Correct." << endl;
+    // decryptor.decrypt(encrypted_matrix, plain_result);
+    // batch_encoder.decode(plain_result, pod_matrix);
+    // print_matrix(pod_matrix, row_size);
 
     /*
     We can also rotate the columns, i.e., swap the rows.
     */
-    print_line(__LINE__);
-    cout << "Rotate columns." << endl;
-    evaluator.rotate_columns_inplace(encrypted_matrix, galois_keys);
-    cout << "    + Noise budget after rotation: " << decryptor.invariant_noise_budget(encrypted_matrix) << " bits"
-         << endl;
-    cout << "    + Decrypt and decode ...... Correct." << endl;
-    decryptor.decrypt(encrypted_matrix, plain_result);
-    batch_encoder.decode(plain_result, pod_matrix);
-    print_matrix(pod_matrix, row_size);
+    // print_line(__LINE__);
+    // cout << "Rotate columns." << endl;
+    // evaluator.rotate_columns_inplace(encrypted_matrix, galois_keys);
+    // cout << "    + Noise budget after rotation: " << decryptor.invariant_noise_budget(encrypted_matrix) << " bits"
+    //      << endl;
+    // cout << "    + Decrypt and decode ...... Correct." << endl;
+    // decryptor.decrypt(encrypted_matrix, plain_result);
+    // batch_encoder.decode(plain_result, pod_matrix);
+    // print_matrix(pod_matrix, row_size);
 
     /*
     Finally, we rotate the rows 4 steps to the right, decrypt, decode, and print.
     */
-    print_line(__LINE__);
-    cout << "Rotate rows 4 steps right." << endl;
-    evaluator.rotate_rows_inplace(encrypted_matrix, -4, galois_keys);
-    cout << "    + Noise budget after rotation: " << decryptor.invariant_noise_budget(encrypted_matrix) << " bits"
-         << endl;
-    cout << "    + Decrypt and decode ...... Correct." << endl;
-    decryptor.decrypt(encrypted_matrix, plain_result);
-    batch_encoder.decode(plain_result, pod_matrix);
-    print_matrix(pod_matrix, row_size);
+    // print_line(__LINE__);
+    // cout << "Rotate rows 4 steps right." << endl;
+    // evaluator.rotate_rows_inplace(encrypted_matrix, -4, galois_keys);
+    // cout << "    + Noise budget after rotation: " << decryptor.invariant_noise_budget(encrypted_matrix) << " bits"
+    //      << endl;
+    // cout << "    + Decrypt and decode ...... Correct." << endl;
+    // decryptor.decrypt(encrypted_matrix, plain_result);
+    // batch_encoder.decode(plain_result, pod_matrix);
+    // print_matrix(pod_matrix, row_size);
 
     /*
     Note that rotations do not consume any noise budget. However, this is only
@@ -205,5 +241,5 @@ void example_rotation()
     Run all rotation examples.
     */
     example_rotation_bfv();
-    example_rotation_ckks();
+    // example_rotation_ckks();
 }

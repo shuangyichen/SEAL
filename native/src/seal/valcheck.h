@@ -309,7 +309,18 @@ namespace seal
     */
     SEAL_NODISCARD inline bool is_valid_for(const SecretKey &in, const SEALContext &context)
     {
-        return is_buffer_valid(in) && is_data_valid_for(in, context);
+        // Ciphertext sk_data = in.data();
+        // std::cout<<in.data().dyn_array().size()<<std::endl;
+        // std::cout<<in.data().coeff_count() <<std::endl;
+        bool buffer_valid = is_buffer_valid(in);
+        bool data_valid = is_data_valid_for(in, context);
+        if(!buffer_valid){
+            std::cout<<"buffer not valid"<<std::endl;
+        }
+        if(!data_valid){
+            std::cout<<"data not valid"<<std::endl;
+        }
+        return buffer_valid && data_valid;
     }
 
     /**

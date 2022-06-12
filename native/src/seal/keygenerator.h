@@ -69,6 +69,28 @@ namespace seal
         {
             destination = generate_pk(false);
         }
+        void create_public_key_with_sk(PublicKey &destination,SecretKey &sk) const
+        {
+            destination = generate_pk_with_sk(false,sk);
+        }
+        void gen_secret_key(SecretKey &destination)
+        {
+            destination = generate_secret_key();
+        }
+
+        void create_public_key_with_same_c1(PublicKey &ref,PublicKey &destination,SecretKey &sk)
+        {
+            destination = generate_pk_with_same_c1(false,ref,sk);
+        }
+
+        void create_common_public_key(PublicKey &destination, std::vector<PublicKey> &pks, int party_num)
+        {
+            destination = generate_cpk(pks, party_num);
+        }
+        void create_common_secret_key(SecretKey &destination, std::vector<SecretKey> &sks, int party_num)
+        {
+            destination = generate_csk(sks, party_num);
+        }
 
         /**
         Generates and returns a public key as a serializable object. Every time
@@ -263,6 +285,18 @@ namespace seal
             create_galois_keys(context_.key_context_data()->galois_tool()->get_elts_all(), destination);
         }
 
+
+        inline void create_galois_keys_with_sk(GaloisKeys &destination, SecretKey &sk)
+        {
+            destination = create_galois_keys_with_sk(context_.key_context_data()->galois_tool()->get_elts_all(), false, sk);
+        }
+
+
+
+        void gen_common_galois_keys(std::vector<GaloisKeys> &rotKeys, int party_num, GaloisKeys &dest)
+        {
+            dest = gen_common_galois_keys(context_.key_context_data()->galois_tool()->get_elts_all(),rotKeys, party_num);
+        }
         /**
         Generates and returns Galois keys as a serializable object. Every time
         this function is called, new Galois keys will be generated.
@@ -319,7 +353,12 @@ namespace seal
         Generates new public key matching to existing secret key.
         */
         PublicKey generate_pk(bool save_seed) const;
+        PublicKey generate_pk_with_sk(bool save_seed,SecretKey &sk) const;
 
+        PublicKey generate_pk_with_same_c1(bool save_seed,PublicKey &ref,SecretKey &sk);
+        PublicKey generate_cpk(std::vector<PublicKey> &pks, int party_num);
+        SecretKey generate_csk(std::vector<SecretKey> &sks, int party_num);
+        SecretKey generate_secret_key();
         /**
         Generates new key switching keys for an array of new keys.
         */
@@ -331,7 +370,7 @@ namespace seal
         */
         void generate_one_kswitch_key(
             util::ConstRNSIter new_key, std::vector<PublicKey> &destination, bool save_seed = false);
-
+        void aggregate_rot_keys(std::vector<PublicKey> &rotkey,std::vector<PublicKey> &destination);
         /**
         Generates and returns the specified number of relinearization keys.
 
@@ -361,7 +400,9 @@ namespace seal
         @throws std::invalid_argument if the Galois elements are not valid
         */
         GaloisKeys create_galois_keys(const std::vector<std::uint32_t> &galois_elts, bool save_seed);
-
+        GaloisKeys create_galois_keys_with_sk(const std::vector<uint32_t> &galois_elts, bool save_seed, SecretKey &sk);
+        GaloisKeys gen_common_galois_keys(const std::vector<uint32_t> &galois_elts, std::vector<GaloisKeys> &rotKeys, int party_num);
+        
         // We use a fresh memory pool with `clear_on_destruction' enabled.
         MemoryPoolHandle pool_ = MemoryManager::GetPool(mm_prof_opt::mm_force_new, true);
 
@@ -372,6 +413,7 @@ namespace seal
         std::size_t secret_key_array_size_ = 0;
 
         util::Pointer<std::uint64_t> secret_key_array_;
+        // util::Pointer<std::uint64_t> public_key_combined_;
 
         mutable util::ReaderWriterLocker secret_key_array_locker_;
 

@@ -59,6 +59,7 @@ namespace seal
         @throws std::invalid_argument if the encryption parameters are not valid
         @throws std::invalid_argument if secret_key is not valid
         */
+        Decryptor(const SEALContext &context);
         Decryptor(const SEALContext &context, const SecretKey &secret_key);
 
         /*
@@ -72,7 +73,8 @@ namespace seal
         @throws std::invalid_argument if encrypted is not in the default NTT form
         */
         void decrypt(const Ciphertext &encrypted, Plaintext &destination);
-
+        void aggregate_partial_decryption(Ciphertext encrypted,std::vector<Ciphertext> &partialDecryption,Plaintext &destination,int party_num);
+        void distributed_decrypt(const Ciphertext &encrypted, Ciphertext &destination);
         /*
         Computes the invariant noise budget (in bits) of a ciphertext. The
         invariant noise budget measures the amount of room there is for the noise
@@ -105,6 +107,8 @@ namespace seal
         void ckks_decrypt(const Ciphertext &encrypted, Plaintext &destination, MemoryPoolHandle pool);
 
         void bgv_decrypt(const Ciphertext &encrypted, Plaintext &destination, MemoryPoolHandle pool);
+
+        //void distributed_decrypt(const Ciphertext &encrypted, SecretKey &sk, Ciphertext &destination);
 
         Decryptor(const Decryptor &copy) = delete;
 
