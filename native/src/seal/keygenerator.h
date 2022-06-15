@@ -282,12 +282,24 @@ namespace seal
         */
         inline void create_galois_keys(GaloisKeys &destination)
         {
+            // std::vector<int> steps = {3};
+            // // create_galois_keys(context_.key_context_data()->galois_tool()->get_elts_all(), destination);
+            // create_galois_keys(context_.key_context_data()->galois_tool()->get_elts_from_steps(steps), destination);
             create_galois_keys(context_.key_context_data()->galois_tool()->get_elts_all(), destination);
         }
 
+        inline void create_galois_keys_with_sk_c1(GaloisKeys &destination, SecretKey &sk, GaloisKeys &ref)
+        {
+            // std::vector<int> steps = {3};
+            // destination = create_galois_keys_with_sk_c1(context_.key_context_data()->galois_tool()->get_elts_from_steps(steps), false, sk,ref);
+            destination = create_galois_keys_with_sk_c1(context_.key_context_data()->galois_tool()->get_elts_all(), false, sk,ref);
+        }
 
         inline void create_galois_keys_with_sk(GaloisKeys &destination, SecretKey &sk)
         {
+            // std::vector<int> steps = {3};
+            // // std::cout<<context_.key_context_data()->galois_tool()->get_elts_from_steps(steps) <<std::endl;
+            // destination = create_galois_keys_with_sk(context_.key_context_data()->galois_tool()->get_elts_from_steps(steps), false, sk);
             destination = create_galois_keys_with_sk(context_.key_context_data()->galois_tool()->get_elts_all(), false, sk);
         }
 
@@ -295,8 +307,13 @@ namespace seal
 
         void gen_common_galois_keys(std::vector<GaloisKeys> &rotKeys, int party_num, GaloisKeys &dest)
         {
+            // std::vector<int> steps = {3};
+            // // std::cout<<context_.key_context_data()->galois_tool()->get_elts_from_steps(steps) <<std::endl;
+            // dest = gen_common_galois_keys(context_.key_context_data()->galois_tool()->get_elts_from_steps(steps),rotKeys, party_num);
             dest = gen_common_galois_keys(context_.key_context_data()->galois_tool()->get_elts_all(),rotKeys, party_num);
         }
+
+        
         /**
         Generates and returns Galois keys as a serializable object. Every time
         this function is called, new Galois keys will be generated.
@@ -370,6 +387,8 @@ namespace seal
         */
         void generate_one_kswitch_key(
             util::ConstRNSIter new_key, std::vector<PublicKey> &destination, bool save_seed = false);
+        void generate_one_kswitch_key_with_sk(util::ConstRNSIter new_key, std::vector<PublicKey> &destination, SecretKey &sk, bool save_seed = false);
+        void generate_one_kswitch_key_with_sk_c1(util::ConstRNSIter new_key, std::vector<PublicKey> &destination, SecretKey &sk, std::vector<PublicKey> &ref,bool save_seed = false);
         void aggregate_rot_keys(std::vector<PublicKey> &rotkey,std::vector<PublicKey> &destination);
         /**
         Generates and returns the specified number of relinearization keys.
@@ -402,7 +421,7 @@ namespace seal
         GaloisKeys create_galois_keys(const std::vector<std::uint32_t> &galois_elts, bool save_seed);
         GaloisKeys create_galois_keys_with_sk(const std::vector<uint32_t> &galois_elts, bool save_seed, SecretKey &sk);
         GaloisKeys gen_common_galois_keys(const std::vector<uint32_t> &galois_elts, std::vector<GaloisKeys> &rotKeys, int party_num);
-        
+        GaloisKeys create_galois_keys_with_sk_c1(const std::vector<uint32_t> &galois_elts, bool save_seed, SecretKey &sk, GaloisKeys &ref);
         // We use a fresh memory pool with `clear_on_destruction' enabled.
         MemoryPoolHandle pool_ = MemoryManager::GetPool(mm_prof_opt::mm_force_new, true);
 

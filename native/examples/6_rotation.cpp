@@ -14,9 +14,9 @@ it is possible to rotate the encrypted vectors cyclically.
 Simply changing `scheme_type::bfv` to `scheme_type::bgv` will make this example work for
 the BGV scheme.
 */
-void example_rotation_bfv()
+void example_rotation_bfv_mp()
 {
-    print_example_banner("Example: Rotation / Rotation in BFV");
+    print_example_banner("Example: Multiparty Rotation / Rotation in BFV");
 
     EncryptionParameters parms(scheme_type::bfv);
 
@@ -26,7 +26,6 @@ void example_rotation_bfv()
     parms.set_plain_modulus(PlainModulus::Batching(poly_modulus_degree, 20));
     // cout << PlainModulus::Batching(poly_modulus_degree, 20)<< endl;
     SEALContext context(parms);
-    cout <<context.using_keyswitching()<< endl;
     print_parameters(context);
     cout << endl;
 
@@ -45,11 +44,14 @@ void example_rotation_bfv()
         keygen.create_public_key_with_same_c1(PKS[0],PKS[i],SKS[i]);
     }
     PublicKey CPK;
-    // SecretKey CSK;
+    SecretKey CSK;
     keygen.create_common_public_key(CPK,PKS,party_num);
-    // keygen.create_common_secret_key(CSK,SKS,3);
+    keygen.create_common_secret_key(CSK,SKS,party_num);
+    cout <<"Generate CPK, CSK"<< endl;
 
-
+    for (int i = 0; i <party_num; ++i) {
+        PKS[i].data().release();
+    }
 
 
 
@@ -63,9 +65,39 @@ void example_rotation_bfv()
     // Decryptor decryptor(context, secret_key);
 
     //Set encryptor & evaluator
+
+
+    // cout << "    + Noise budget in fresh encryption: " << decryptor.invariant_noise_budget(encrypted_matrix) << " bits"
+    //      << endl;
+    // cout << endl;
+
+    /*
+    Rotations require yet another type of special key called `Galois keys'. These
+    are easily obtained from the KeyGenerator.
+    */
+    // GaloisKeys galois_keys;
+    // keygen.create_galois_keys(galois_keys);
+
+
+    vector<GaloisKeys> galois_keys_set(party_num);
+    keygen.create_galois_keys_with_sk(galois_keys_set[0],SKS[0]);
+    // cout <<"Generate other galois key"<< endl;
+    for (int i = 1; i <party_num; ++i) {
+        keygen.create_galois_keys_with_sk_c1(galois_keys_set[i],SKS[i],galois_keys_set[0]);
+    }
+    // cout <<"Generate galois key"<< endl;
+    GaloisKeys cRotKeys;
+    keygen.gen_common_galois_keys(galois_keys_set,party_num,cRotKeys);
+    // for (int i = 0; i <party_num; ++i) {
+    //     SKS[i].data().release();
+    // }
+    // cout <<"Generate common galois key"<< endl;
+
+
+
     Encryptor encryptor(context, CPK);
     Evaluator evaluator(context);
-    // Decryptor decryptor(context, CSK);
+    Decryptor decryptor(context, CSK);
 
     BatchEncoder batch_encoder(context);
     size_t slot_count = batch_encoder.slot_count();
@@ -82,6 +114,10 @@ void example_rotation_bfv()
     pod_matrix[row_size + 2] = 6ULL;
     pod_matrix[row_size + 3] = 7ULL;
 
+
+
+
+
     cout << "Input plaintext matrix:" << endl;
     print_matrix(pod_matrix, row_size);
 
@@ -95,38 +131,20 @@ void example_rotation_bfv()
     batch_encoder.encode(pod_matrix, plain_matrix);
     Ciphertext encrypted_matrix;
     encryptor.encrypt(plain_matrix, encrypted_matrix);
-    // cout << "    + Noise budget in fresh encryption: " << decryptor.invariant_noise_budget(encrypted_matrix) << " bits"
-    //      << endl;
-    // cout << endl;
-
-    /*
-    Rotations require yet another type of special key called `Galois keys'. These
-    are easily obtained from the KeyGenerator.
-    */
-    // GaloisKeys galois_keys;
-    // keygen.create_galois_keys(galois_keys);
-
-
-    vector<GaloisKeys> galois_keys_set(party_num);
-    for (int i = 0; i <party_num; ++i) {
-        keygen.create_galois_keys_with_sk(galois_keys_set[i],SKS[i]);
-    }
-    GaloisKeys cRotKeys;
-    keygen.gen_common_galois_keys(galois_keys_set,party_num,cRotKeys);
     // /*
     // Now rotate both matrix rows 3 steps to the left, decrypt, decode, and print.
     // */
-    // print_line(__LINE__);
-    // cout << "Rotate rows 3 steps left." << endl;
-    // // evaluator.rotate_rows_inplace(encrypted_matrix, 3, galois_keys);
-    // evaluator.rotate_rows_inplace(encrypted_matrix, 3, cRotKeys);
-    // Plaintext plain_result;
+    print_line(__LINE__);
+    cout << "Rotate rows 3 steps left." << endl;
+    // evaluator.rotate_rows_inplace(encrypted_matrix, 3, galois_keys);
+    evaluator.rotate_rows_inplace(encrypted_matrix, 3, galois_keys_set[0]);
+    Plaintext plain_result;
     // cout << "    + Noise budget after rotation: " << decryptor.invariant_noise_budget(encrypted_matrix) << " bits"
     //      << endl;
     // cout << "    + Decrypt and decode ...... Correct." << endl;
-    // decryptor.decrypt(encrypted_matrix, plain_result);
-    // batch_encoder.decode(plain_result, pod_matrix);
-    // print_matrix(pod_matrix, row_size);
+    decryptor.decrypt(encrypted_matrix, plain_result);
+    batch_encoder.decode(plain_result, pod_matrix);
+    print_matrix(pod_matrix, row_size);
 
     /*
     We can also rotate the columns, i.e., swap the rows.
@@ -162,6 +180,87 @@ void example_rotation_bfv()
     for the user to do.
     */
 }
+
+
+void example_rotation_bfv()
+{
+    print_example_banner("Example: Rotation / Rotation in BFV");
+
+    EncryptionParameters parms(scheme_type::bfv);
+
+    size_t poly_modulus_degree = 8192;
+    parms.set_poly_modulus_degree(poly_modulus_degree);
+    parms.set_coeff_modulus(CoeffModulus::BFVDefault(poly_modulus_degree));
+    parms.set_plain_modulus(PlainModulus::Batching(poly_modulus_degree, 20));
+
+    SEALContext context(parms);
+    print_parameters(context);
+    cout << endl;
+
+    KeyGenerator keygen(context);
+    SecretKey secret_key = keygen.secret_key();
+    PublicKey public_key;
+    keygen.create_public_key(public_key);
+    RelinKeys relin_keys;
+    keygen.create_relin_keys(relin_keys);
+    Encryptor encryptor(context, public_key);
+    Evaluator evaluator(context);
+    Decryptor decryptor(context, secret_key);
+
+    BatchEncoder batch_encoder(context);
+    size_t slot_count = batch_encoder.slot_count();
+    size_t row_size = slot_count / 2;
+    cout << "Plaintext matrix row size: " << row_size << endl;
+
+    vector<uint64_t> pod_matrix(slot_count, 0ULL);
+    pod_matrix[0] = 0ULL;
+    pod_matrix[1] = 1ULL;
+    pod_matrix[2] = 2ULL;
+    pod_matrix[3] = 3ULL;
+    pod_matrix[row_size] = 4ULL;
+    pod_matrix[row_size + 1] = 5ULL;
+    pod_matrix[row_size + 2] = 6ULL;
+    pod_matrix[row_size + 3] = 7ULL;
+
+    cout << "Input plaintext matrix:" << endl;
+    print_matrix(pod_matrix, row_size);
+
+    /*
+    First we use BatchEncoder to encode the matrix into a plaintext. We encrypt
+    the plaintext as usual.
+    */
+    Plaintext plain_matrix;
+    print_line(__LINE__);
+    cout << "Encode and encrypt." << endl;
+    batch_encoder.encode(pod_matrix, plain_matrix);
+    Ciphertext encrypted_matrix;
+    encryptor.encrypt(plain_matrix, encrypted_matrix);
+    cout << "    + Noise budget in fresh encryption: " << decryptor.invariant_noise_budget(encrypted_matrix) << " bits"
+         << endl;
+    cout << endl;
+
+    /*
+    Rotations require yet another type of special key called `Galois keys'. These
+    are easily obtained from the KeyGenerator.
+    */
+    GaloisKeys galois_keys;
+    keygen.create_galois_keys(galois_keys);
+
+    /*
+    Now rotate both matrix rows 3 steps to the left, decrypt, decode, and print.
+    */
+    print_line(__LINE__);
+    cout << "Rotate rows 3 steps left." << endl;
+    evaluator.rotate_rows_inplace(encrypted_matrix, 3, galois_keys);
+    Plaintext plain_result;
+    cout << "    + Noise budget after rotation: " << decryptor.invariant_noise_budget(encrypted_matrix) << " bits"
+         << endl;
+    cout << "    + Decrypt and decode ...... Correct." << endl;
+    decryptor.decrypt(encrypted_matrix, plain_result);
+    batch_encoder.decode(plain_result, pod_matrix);
+    print_matrix(pod_matrix, row_size);
+}
+
 
 void example_rotation_ckks()
 {
@@ -240,6 +339,7 @@ void example_rotation()
     /*
     Run all rotation examples.
     */
-    example_rotation_bfv();
+    example_rotation_bfv_mp();
+    // example_rotation_bfv();
     // example_rotation_ckks();
 }

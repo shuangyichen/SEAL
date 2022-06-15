@@ -265,7 +265,7 @@ namespace seal
                 add_poly_coeffmod(public_key.data().data()+j*coeff_count,pks[i].data().data()+j*coeff_count,coeff_count,coeff_modulus[j],public_key.data().data()+j*coeff_count);
         }
         }
-        cout<<public_key.data().size()<<endl;
+        // cout<<public_key.data().size()<<endl;
         return public_key;
     }
 
@@ -321,18 +321,21 @@ namespace seal
         size_t rotKeys_size = rotKeys[0].data().size();
 
 
-
         GaloisKeys common_RotKeys;
         common_RotKeys.data().resize(coeff_count);
         for (auto galois_elt : galois_elts)
         {
             size_t index = GaloisKeys::get_index(galois_elt);
             // common_RotKeys.data()[index].resize(decomp_mod_count);
-
-
-            for (size_t j = 0; j <party_num; ++j) {
-                aggregate_rot_keys(rotKeys[j].data()[index],common_RotKeys.data()[index]);
+            // cout<< galois_elt <<endl;
+            // common_RotKeys.data()[index].resize(decomp_mod_count);
+            // cout << *secret_key_.data().data() << endl;
+            // cout<< rotKeys[0].data()[index].data() <<endl;
+            for (size_t j = 1; j <party_num; ++j) {
+                //cout<< j <<endl;
+                aggregate_rot_keys(rotKeys[j].data()[index],rotKeys[0].data()[index]);
             }
+            // cout<< rotKeys[0].data()[index].data() <<endl;
             // // SEAL_ITERATE(iter(),1, [&](auto I){
             // SEAL_ITERATE(iter(rotKeys[j].data()[index],coeff_modulus,common_RotKeys.data()[index], size_t(0)), decomp_mod_count, [&](auto I) {
             // CoeffIter singleRotKeyIter = (*iter(get<0>(I).data()))[get<3>(I)];
@@ -342,15 +345,10 @@ namespace seal
             // // });
             // }
         }
-        common_RotKeys.parms_id_ = context_data.parms_id();
-        // vector<uint32_t> galois_elts = galois_tool()->get_elts_all();
-        // for (size_t j = 0; j < coeff_count; j++){
-        //     for (int i=0;i<party_num;++i){
-        //         add_poly_coeffmod(common_RotKeys.data(j).data(),rotKeys[i].data(j).data(),coeff_count,coeff_modulus[j],common_RotKeys.data(j).data());
-        // }
-        // }
 
 
+        common_RotKeys = rotKeys[0];
+        // cout<< rotKeys[0].data()[0].data() <<endl;
         return common_RotKeys;
     }
 
@@ -362,24 +360,105 @@ namespace seal
         auto &key_context_data = *context_.key_context_data();
         auto &key_parms = key_context_data.parms();
         auto &key_modulus = key_parms.coeff_modulus();
+        size_t coeff_modulus_size = key_modulus.size();
 
         // Size check
         if (!product_fits_in(coeff_count, decomp_mod_count))
         {
             throw logic_error("invalid parameters");
         }
+        // cout<<"is ntt form"<<endl;
+        // cout<< destination[0].data().is_ntt_form()<<endl;
+        // cout<< *destination[0].data().data(1) <<endl;
+        // cout<< *rotkey[0].data().data(1) <<endl;
+        // cout<< *destination[0].data().data(1)<<endl;
+        int length = rotkey.size();
+        for (int i = 0; i <decomp_mod_count ; i++){
+            // auto bootstrap_prng = key_parms.random_generator()->create();
 
-        // KSwitchKeys data allocated from pool given by MemoryManager::GetPool.
-        destination.resize(decomp_mod_count);
-            // SEAL_ITERATE(iter(),1, [&](auto I){
-            SEAL_ITERATE(iter(rotkey,key_modulus,destination, size_t(0)), decomp_mod_count, [&](auto I) {
-            CoeffIter singleRotKeyIter = (*iter(get<0>(I).data()))[get<3>(I)];
-            CoeffIter destination_iter = (*iter(get<2>(I).data()))[get<3>(I)];
-            add_poly_coeffmod(destination_iter, singleRotKeyIter, coeff_count, get<1>(I), destination_iter);
-            });
-            // });
-            
+            // // Sample a public seed for generating uniform randomness
+            // prng_seed_type public_prng_seed;
+            // bootstrap_prng->generate(prng_seed_byte_count, reinterpret_cast<seal_byte *>(public_prng_seed.data()));
+
+            // auto ciphertext_prng = UniformRandomGeneratorFactory::DefaultFactory()->create(public_prng_seed);
+
+            // sample_poly_uniform(ciphertext_prng, key_parms, c1);
+            //  sample_poly_uniform(ciphertext_prng, key_parms, destination[i].data().data(1));
+        // for (size_t j = 0; j < decomp_mod_count; j++){
+        for (size_t j = 0; j < coeff_modulus_size; j++){
+            // sample_poly_uniform(ciphertext_prng, key_parms, destination[i].data().data(1)+ j * coeff_count);
+            add_poly_coeffmod(destination[i].data().data()+ j * coeff_count,rotkey[i].data().data() + j * coeff_count , coeff_count, key_modulus[j],destination[i].data().data()+ j * coeff_count);
+        }
+        // add_poly_coeffmod(
+        //             destination[i].data().data(),rotkey[i].data().data()  , coeff_count, key_modulus[i],
+        //             destination[i].data().data());
+        // add_poly_coeffmod(
+        //             destination[i].data().data(),rotkey[i].data().data()  , coeff_count, key_modulus[i],
+        //             destination[i].data().data());
+        }
+
+        // cout<< *destination[0].data().data(1)<<endl;
+        // cout<< *destination[0].data().data(1) <<endl;
     }
+
+    GaloisKeys KeyGenerator::create_galois_keys_with_sk_c1(const vector<uint32_t> &galois_elts, bool save_seed, SecretKey &sk, GaloisKeys &ref)
+    {
+                // Extract encryption parameters.
+        auto &context_data = *context_.key_context_data();
+        auto &parms = context_data.parms();
+        auto &coeff_modulus = parms.coeff_modulus();
+        auto galois_tool = context_data.galois_tool();
+        size_t coeff_count = parms.poly_modulus_degree();
+        size_t coeff_modulus_size = coeff_modulus.size();
+
+        // Size check
+        if (!product_fits_in(coeff_count, coeff_modulus_size, size_t(2)))
+        {
+            throw logic_error("invalid parameters");
+        }
+        // cout<<coeff_count<<endl;
+        // cout<<coeff_modulus_size<<endl;
+
+        // Create the GaloisKeys object to return
+        GaloisKeys galois_keys;
+
+        // The max number of keys is equal to number of coefficients
+        galois_keys.data().resize(coeff_count);
+
+        for (auto galois_elt : galois_elts)
+        {
+            // Verify coprime conditions.
+            // cout<<galois_elt<<endl;
+            if (!(galois_elt & 1) || (galois_elt >= coeff_count << 1))
+            {
+                throw invalid_argument("Galois element is not valid");
+            }
+
+            // Do we already have the key?
+            if (galois_keys.has_key(galois_elt))
+            {
+                continue;
+            }
+
+            // Rotate secret key for each coeff_modulus
+            SEAL_ALLOCATE_GET_RNS_ITER(rotated_secret_key, coeff_count, coeff_modulus_size, pool_);
+            RNSIter secret_key(sk.data().data(), coeff_count);
+            galois_tool->apply_galois_ntt(secret_key, coeff_modulus_size, galois_elt, rotated_secret_key);
+
+            // Initialize Galois key
+            // This is the location in the galois_keys vector
+            size_t index = GaloisKeys::get_index(galois_elt);
+
+            // Create Galois keys.
+            generate_one_kswitch_key_with_sk_c1(rotated_secret_key, galois_keys.data()[index], sk, ref.data()[index],save_seed);
+        }
+
+        // Set the parms_id
+        galois_keys.parms_id_ = context_data.parms_id();
+        // cout<<galois_keys.data().data()<<endl;
+        return galois_keys;
+    }
+
     GaloisKeys KeyGenerator::create_galois_keys_with_sk(const vector<uint32_t> &galois_elts, bool save_seed, SecretKey &sk)
     {
         // Extract encryption parameters.
@@ -407,6 +486,7 @@ namespace seal
         for (auto galois_elt : galois_elts)
         {
             // Verify coprime conditions.
+            // cout<<galois_elt<<endl;
             if (!(galois_elt & 1) || (galois_elt >= coeff_count << 1))
             {
                 throw invalid_argument("Galois element is not valid");
@@ -428,7 +508,7 @@ namespace seal
             size_t index = GaloisKeys::get_index(galois_elt);
 
             // Create Galois keys.
-            generate_one_kswitch_key(rotated_secret_key, galois_keys.data()[index], save_seed);
+            generate_one_kswitch_key_with_sk(rotated_secret_key, galois_keys.data()[index], sk, save_seed);
         }
 
         // Set the parms_id
@@ -577,7 +657,7 @@ namespace seal
         secret_key_array_.acquire(secret_key_array);
     }
 
-    void KeyGenerator::generate_one_kswitch_key(ConstRNSIter new_key, vector<PublicKey> &destination, bool save_seed)
+    void KeyGenerator::generate_one_kswitch_key_with_sk_c1(ConstRNSIter new_key, vector<PublicKey> &destination, SecretKey &sk, vector<PublicKey> &ref, bool save_seed)
     {
         if (!context_.using_keyswitching())
         {
@@ -590,6 +670,78 @@ namespace seal
         auto &key_parms = key_context_data.parms();
         auto &key_modulus = key_parms.coeff_modulus();
 
+        // Size check
+        if (!product_fits_in(coeff_count, decomp_mod_count))
+        {
+            throw logic_error("invalid parameters");
+        }
+
+        // KSwitchKeys data allocated from pool given by MemoryManager::GetPool.
+        destination.resize(decomp_mod_count);
+        // cout<<"sk"<<endl;
+        // cout<<*sk.data().data()<<endl;
+        SEAL_ITERATE(iter(new_key, key_modulus, destination, size_t(0),ref), decomp_mod_count, [&](auto I) {
+            SEAL_ALLOCATE_GET_COEFF_ITER(temp, coeff_count, pool_);
+            encrypt_zero_symmetric_with_c1(
+                sk, context_, key_context_data.parms_id(), true, save_seed,get<4>(I).data(), get<2>(I).data());
+            uint64_t factor = barrett_reduce_64(key_modulus.back().value(), get<1>(I));
+            multiply_poly_scalar_coeffmod(get<0>(I), coeff_count, factor, get<1>(I), temp);
+
+            // We use the SeqIter at get<3>(I) to find the i-th RNS factor of the first destination polynomial.
+            CoeffIter destination_iter = (*iter(get<2>(I).data()))[get<3>(I)];
+            add_poly_coeffmod(destination_iter, temp, coeff_count, get<1>(I), destination_iter);
+        });
+    }
+
+    void KeyGenerator::generate_one_kswitch_key_with_sk(ConstRNSIter new_key, vector<PublicKey> &destination, SecretKey &sk, bool save_seed)
+    {
+        if (!context_.using_keyswitching())
+        {
+            throw logic_error("keyswitching is not supported by the context");
+        }
+
+        size_t coeff_count = context_.key_context_data()->parms().poly_modulus_degree();
+        size_t decomp_mod_count = context_.first_context_data()->parms().coeff_modulus().size();
+        auto &key_context_data = *context_.key_context_data();
+        auto &key_parms = key_context_data.parms();
+        auto &key_modulus = key_parms.coeff_modulus();
+
+        // Size check
+        if (!product_fits_in(coeff_count, decomp_mod_count))
+        {
+            throw logic_error("invalid parameters");
+        }
+
+        // KSwitchKeys data allocated from pool given by MemoryManager::GetPool.
+        destination.resize(decomp_mod_count);
+        // cout<<"sk"<<endl;
+        // cout<<*sk.data().data()<<endl;
+        SEAL_ITERATE(iter(new_key, key_modulus, destination, size_t(0)), decomp_mod_count, [&](auto I) {
+            SEAL_ALLOCATE_GET_COEFF_ITER(temp, coeff_count, pool_);
+            encrypt_zero_symmetric(
+                sk, context_, key_context_data.parms_id(), true, save_seed, get<2>(I).data());
+            uint64_t factor = barrett_reduce_64(key_modulus.back().value(), get<1>(I));
+            multiply_poly_scalar_coeffmod(get<0>(I), coeff_count, factor, get<1>(I), temp);
+
+            // We use the SeqIter at get<3>(I) to find the i-th RNS factor of the first destination polynomial.
+            CoeffIter destination_iter = (*iter(get<2>(I).data()))[get<3>(I)];
+            add_poly_coeffmod(destination_iter, temp, coeff_count, get<1>(I), destination_iter);
+        });
+    }
+
+    void KeyGenerator::generate_one_kswitch_key(ConstRNSIter new_key, vector<PublicKey> &destination, bool save_seed)
+    {
+        if (!context_.using_keyswitching())
+        {
+            throw logic_error("keyswitching is not supported by the context");
+        }
+
+        size_t coeff_count = context_.key_context_data()->parms().poly_modulus_degree();
+        size_t decomp_mod_count = context_.first_context_data()->parms().coeff_modulus().size();
+        auto &key_context_data = *context_.key_context_data();
+        auto &key_parms = key_context_data.parms();
+        auto &key_modulus = key_parms.coeff_modulus();
+        size_t coeff_modulus_size = key_modulus.size();
         // Size check
         if (!product_fits_in(coeff_count, decomp_mod_count))
         {
