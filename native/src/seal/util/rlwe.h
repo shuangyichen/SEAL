@@ -98,5 +98,10 @@ namespace seal
         void encrypt_zero_symmetric(
             const SecretKey &secret_key, const SEALContext &context, parms_id_type parms_id, bool is_ntt_form,
             bool save_seed, Ciphertext &destination);
+
+
+        void encrypt_zero_symmetric_crp(
+            const SecretKey &secret_key, const SEALContext &context, parms_id_type parms_id, bool is_ntt_form,
+            bool save_seed, Ciphertext &destination);
     } // namespace util
 } // namespace seal
