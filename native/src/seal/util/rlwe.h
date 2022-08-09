@@ -103,5 +103,11 @@ namespace seal
         void encrypt_zero_symmetric_crp(
             const SecretKey &secret_key, const SEALContext &context, parms_id_type parms_id, bool is_ntt_form,
             bool save_seed, Ciphertext &destination);
+        void encrypt_zero_symmetric_crp_round_one(const SecretKey &secret_key, const SEALContext &context, const SecretKey &u_poly, parms_id_type parms_id, bool is_ntt_form,
+            bool save_seed, Ciphertext &destination);
+
+
+        void encrypt_zero_symmetric_crp_round_two(const SecretKey &secret_key, const SEALContext &context, parms_id_type parms_id, bool is_ntt_form,
+            bool save_seed, Ciphertext &destination, Ciphertext &ref, SecretKey &u);
     } // namespace util
 } // namespace seal

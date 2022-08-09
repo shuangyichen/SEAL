@@ -5,8 +5,7 @@
 #include <iostream>
 #include <iomanip>
 #include <fstream>
-using namespace std;
-using namespace seal;
+
 using namespace std;
 using namespace seal;
 
@@ -57,17 +56,17 @@ void example_rotation_bfv()
     keygen2.create_public_key_crp(PKS[1]);
     keygen2.create_galois_keys_crp(steps,galois_keys_set[1]);
 
-    SKS[2] = keygen2.secret_key();
+    SKS[2] = keygen3.secret_key();
     // keygen2.create_public_key_crp(PKS[2]);
-    keygen2.create_public_key_crp(PKS[2]);
-    keygen2.create_galois_keys_crp(steps,galois_keys_set[2]);
+    keygen3.create_public_key_crp(PKS[2]);
+    keygen3.create_galois_keys_crp(steps,galois_keys_set[2]);
     
-    cout<< *PKS[0].data().data(1)<<endl;
-    cout<< *PKS[0].data().data()<<endl;
-    cout<< *PKS[1].data().data(1)<<endl;
-    cout<< *PKS[1].data().data()<<endl;
-    cout<< *PKS[2].data().data(1)<<endl;
-    cout<< *PKS[2].data().data()<<endl;
+    // cout<< *PKS[0].data().data(1)<<endl;
+    // cout<< *PKS[0].data().data()<<endl;
+    // cout<< *PKS[1].data().data(1)<<endl;
+    // cout<< *PKS[1].data().data()<<endl;
+    // cout<< *PKS[2].data().data(1)<<endl;
+    // cout<< *PKS[2].data().data()<<endl;
     // KeyGenerator keygen(context);
     // SecretKey secret_key = keygen.secret_key();
     // PublicKey public_key = keygen.create_public_key();
@@ -111,37 +110,37 @@ void example_rotation_bfv()
     cout << "0x" << x_decrypted.to_string() << " ...... Correct." << endl;
 
 
-    BatchEncoder batch_encoder(context);
-    size_t slot_count = batch_encoder.slot_count();
-    size_t row_size = slot_count / 2;
-    cout << "Plaintext matrix row size: " << row_size << endl;
+    // BatchEncoder batch_encoder(context);
+    // size_t slot_count = batch_encoder.slot_count();
+    // size_t row_size = slot_count / 2;
+    // cout << "Plaintext matrix row size: " << row_size << endl;
 
-    vector<uint64_t> pod_matrix(slot_count, 0ULL);
-    pod_matrix[0] = 0ULL;
-    pod_matrix[1] = 1ULL;
-    pod_matrix[2] = 2ULL;
-    pod_matrix[3] = 3ULL;
-    pod_matrix[row_size] = 4ULL;
-    pod_matrix[row_size + 1] = 5ULL;
-    pod_matrix[row_size + 2] = 6ULL;
-    pod_matrix[row_size + 3] = 7ULL;
+    // vector<uint64_t> pod_matrix(slot_count, 0ULL);
+    // pod_matrix[0] = 0ULL;
+    // pod_matrix[1] = 1ULL;
+    // pod_matrix[2] = 2ULL;
+    // pod_matrix[3] = 3ULL;
+    // pod_matrix[row_size] = 4ULL;
+    // pod_matrix[row_size + 1] = 5ULL;
+    // pod_matrix[row_size + 2] = 6ULL;
+    // pod_matrix[row_size + 3] = 7ULL;
 
-    cout << "Input plaintext matrix:" << endl;
-    print_matrix(pod_matrix, row_size);
+    // cout << "Input plaintext matrix:" << endl;
+    // print_matrix(pod_matrix, row_size);
 
     /*
     First we use BatchEncoder to encode the matrix into a plaintext. We encrypt
     the plaintext as usual.
     */
-    Plaintext plain_matrix;
-    print_line(__LINE__);
-    cout << "Encode and encrypt." << endl;
-    batch_encoder.encode(pod_matrix, plain_matrix);
-    Ciphertext encrypted_matrix;
-    encryptor.encrypt(plain_matrix, encrypted_matrix);
-    cout << "    + Noise budget in fresh encryption: " << decryptor.invariant_noise_budget(encrypted_matrix) << " bits"
-         << endl;
-    cout << endl;
+    // Plaintext plain_matrix;
+    // print_line(__LINE__);
+    // cout << "Encode and encrypt." << endl;
+    // batch_encoder.encode(pod_matrix, plain_matrix);
+    // Ciphertext encrypted_matrix;
+    // encryptor.encrypt(plain_matrix, encrypted_matrix);
+    // cout << "    + Noise budget in fresh encryption: " << decryptor.invariant_noise_budget(encrypted_matrix) << " bits"
+    //      << endl;
+    // cout << endl;
 
     /*
     Rotations require yet another type of special key called `Galois keys'. These
@@ -152,16 +151,16 @@ void example_rotation_bfv()
     /*
     Now rotate both matrix rows 3 steps to the left, decrypt, decode, and print.
     */
-    print_line(__LINE__);
-    cout << "Rotate rows 3 steps left." << endl;
-    evaluator.rotate_rows_inplace(encrypted_matrix, 3, cRotKeys);
-    Plaintext plain_result;
-    cout << "    + Noise budget after rotation: " << decryptor.invariant_noise_budget(encrypted_matrix) << " bits"
-         << endl;
-    cout << "    + Decrypt and decode ...... Correct." << endl;
-    decryptor.decrypt(encrypted_matrix, plain_result);
-    batch_encoder.decode(plain_result, pod_matrix);
-    print_matrix(pod_matrix, row_size);
+    // print_line(__LINE__);
+    // cout << "Rotate rows 3 steps left." << endl;
+    // evaluator.rotate_rows_inplace(encrypted_matrix, 3, cRotKeys);
+    // Plaintext plain_result;
+    // cout << "    + Noise budget after rotation: " << decryptor.invariant_noise_budget(encrypted_matrix) << " bits"
+    //      << endl;
+    // cout << "    + Decrypt and decode ...... Correct." << endl;
+    // decryptor.decrypt(encrypted_matrix, plain_result);
+    // batch_encoder.decode(plain_result, pod_matrix);
+    // print_matrix(pod_matrix, row_size);
 
     /*
     We can also rotate the columns, i.e., swap the rows.

@@ -89,6 +89,25 @@ namespace seal
             destination = generate_csk(sks, party_num);
         }
 
+        inline void create_relin_keys_round_one(RelinKeys &destination)
+        {
+            destination = generate_relin_key_round_one(false);
+        }
+
+        void create_relin_keys_round_two(RelinKeys &destination, RelinKeys &round_one_share)
+        {
+            destination = generate_relin_key_round_two(round_one_share,false);
+        }
+        void aggregate_relin_keys_round_one(RelinKeys &destination, std::vector<RelinKeys> &rks, int party_num)
+        {
+            destination = aggregate_rk_round_one(rks, party_num);
+        }
+
+        void aggregate_relin_keys_round_two(RelinKeys &destination, RelinKeys &ref, std::vector<RelinKeys> &rks, int party_num)
+        {
+            destination = aggregate_rk_round_two(rks, ref, party_num);
+
+        }
 
         /**
         Generates and returns a public key as a serializable object. Every time
@@ -353,21 +372,29 @@ namespace seal
         */
         PublicKey generate_pk(bool save_seed) const;
         PublicKey generate_pk_crp(bool save_seed) const;
-
+        RelinKeys generate_relin_key_round_one(bool save_seed);
+        RelinKeys aggregate_rk_round_one(std::vector<RelinKeys> &rks, int party_num);
+        RelinKeys aggregate_rk_round_two(std::vector<RelinKeys> &rks, RelinKeys &ref,int party_num);
+        RelinKeys generate_relin_key_round_two(RelinKeys &round_one_share,bool save_seed);
         /**
         Generates new key switching keys for an array of new keys.
         */
         void generate_kswitch_keys(
             util::ConstPolyIter new_keys, std::size_t num_keys, KSwitchKeys &destination, bool save_seed = false);
-
+        // void generate_kswitch_keys_crp(
+        //     util::ConstPolyIter new_keys, std::size_t num_keys, KSwitchKeys &destination, bool save_seed = false);
+        void generate_kswitch_keys_crp_rlk(
+            util::ConstPolyIter new_keys, std::size_t num_keys, KSwitchKeys &destination, bool save_seed = false);
+        
         /**
         Generates one key switching key for a new key.
         */
         void generate_one_kswitch_key(
             util::ConstRNSIter new_key, std::vector<PublicKey> &destination, bool save_seed = false);
 
-         void generate_one_kswitch_key_crp(util::ConstRNSIter new_key, std::vector<PublicKey> &destination, bool save_seed);
-
+        void generate_one_kswitch_key_crp(util::ConstRNSIter new_key, std::vector<PublicKey> &destination, bool save_seed);
+        
+        void generate_one_kswitch_key_crp_rlk(util::ConstRNSIter new_key, std::vector<PublicKey> &destination, bool save_seed);
         /**
         Generates and returns the specified number of relinearization keys.
 
@@ -400,16 +427,23 @@ namespace seal
         GaloisKeys create_galois_keys_crp(const std::vector<std::uint32_t> &galois_elts, bool save_seed);
         GaloisKeys gen_common_galois_keys(const std::vector<uint32_t> &galois_elts, std::vector<GaloisKeys> &rotKeys, int party_num);
         void aggregate_rot_keys(std::vector<PublicKey> &rotkey,std::vector<PublicKey> &destination);
+        void add_rel_key(std::vector<PublicKey> &rlk, std::vector<PublicKey> &destination);
+        void round_two_share_generate(std::vector<PublicKey> &rlk_r2, std::vector<PublicKey> &share_r1);
+        void output_rel_key(std::vector<PublicKey> &rlk,std::vector<PublicKey> &destination);
         // We use a fresh memory pool with `clear_on_destruction' enabled.
         MemoryPoolHandle pool_ = MemoryManager::GetPool(mm_prof_opt::mm_force_new, true);
 
         SEALContext context_;
 
         SecretKey secret_key_;
+        SecretKey u_;
+        SecretKey sub_u_s;
 
         std::size_t secret_key_array_size_ = 0;
 
         util::Pointer<std::uint64_t> secret_key_array_;
+        util::Pointer<std::uint64_t> u_array_;
+
 
         mutable util::ReaderWriterLocker secret_key_array_locker_;
 

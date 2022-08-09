@@ -2,7 +2,9 @@
 // Licensed under the MIT license.
 
 #include "examples.h"
-
+#include <iostream>
+#include <iomanip>
+#include <fstream>
 using namespace std;
 using namespace seal;
 
@@ -67,21 +69,70 @@ void example_batch_encoder()
     auto qualifiers = context.first_context_data()->qualifiers();
     cout << "Batching enabled: " << boolalpha << qualifiers.using_batching << endl;
 
+
+    vector<SecretKey> SKS(3);
+    vector<PublicKey> PKS(3);
+    vector<RelinKeys> RKS_round_one(3);
+
+    KeyGenerator keygen1(context);
+    KeyGenerator keygen2(context);
+    KeyGenerator keygen3(context);
+
+    //party0
+    SKS[0] = keygen1.secret_key();
+    keygen1.create_public_key_crp(PKS[0]);
+    keygen1.create_relin_keys_round_one(RKS_round_one[0]);
+    //party1
+    SKS[1] = keygen2.secret_key();
+    keygen2.create_public_key_crp(PKS[1]);
+    keygen2.create_relin_keys_round_one(RKS_round_one[1]);
+    //party2
+    SKS[2] = keygen3.secret_key();
+    keygen3.create_public_key_crp(PKS[2]);
+    keygen3.create_relin_keys_round_one(RKS_round_one[2]);
+    PublicKey CPK;
+    SecretKey CSK;
+    RelinKeys Relin_key_round_one;
+    RelinKeys Relin_key_round_two;
     KeyGenerator keygen(context);
-    SecretKey secret_key = keygen.secret_key();
-    PublicKey public_key;
-    keygen.create_public_key(public_key);
-    RelinKeys relin_keys;
-    keygen.create_relin_keys(relin_keys);
-    Encryptor encryptor(context, public_key);
+    // KeyGenerator keygen(context);
+    keygen.create_common_public_key(CPK,PKS,3);
+    keygen.create_common_secret_key(CSK,SKS,3);
+    cout <<"Generate CPK, CSK"<< endl;
+    keygen.aggregate_relin_keys_round_one(Relin_key_round_one,RKS_round_one,3);
+    cout <<"Generate relin key round one"<< endl;
+    // cout<< "Relin_key_round_one"<<endl;
+    // cout<< Relin_key_round_one.data().size()<<endl;
+    // cout<< Relin_key_round_one.data()[0].size()<<endl;
+    // cout<< Relin_key_round_one.data()[0][0].size()<<endl;
+    // //relin key round 2
+    vector<RelinKeys> RKS_round_two(3);
+
+    keygen1.create_relin_keys_round_two(RKS_round_two[0],Relin_key_round_one);
+    keygen2.create_relin_keys_round_two(RKS_round_two[1],Relin_key_round_one);
+    keygen3.create_relin_keys_round_two(RKS_round_two[2],Relin_key_round_one);
+    cout <<"Round two share generating"<< endl;
+    keygen.aggregate_relin_keys_round_two(Relin_key_round_two,Relin_key_round_one,RKS_round_two,3);
+    cout <<"RelinKey generated"<< endl;
+    Encryptor encryptor(context, CPK);
     Evaluator evaluator(context);
-    Decryptor decryptor(context, secret_key);
+    Decryptor decryptor(context, CSK);
+
+    // KeyGenerator keygen(context);
+    // SecretKey secret_key = keygen.secret_key();
+    // PublicKey public_key;
+    // keygen.create_public_key(public_key);
+    // RelinKeys relin_keys;
+    // keygen.create_relin_keys(relin_keys);
+    // Encryptor encryptor(context, public_key);
+    // Evaluator evaluator(context);
+    // Decryptor decryptor(context, secret_key);
 
     /*
     Batching is done through an instance of the BatchEncoder class.
     */
     BatchEncoder batch_encoder(context);
-
+    
     /*
     The total number of batching `slots' equals the poly_modulus_degree, N, and
     these slots are organized into 2-by-(N/2) matrices that can be encrypted and
@@ -165,19 +216,25 @@ void example_batch_encoder()
     the sum.
     */
     print_line(__LINE__);
+    Plaintext plain_result4;
+    vector<uint64_t> pod_result4;
     cout << "Sum, square, and relinearize." << endl;
     evaluator.add_plain_inplace(encrypted_matrix, plain_matrix2);
+    decryptor.decrypt(encrypted_matrix, plain_result4);
+    batch_encoder.decode(plain_result4, pod_result4);
+    cout << "    + Result plaintext matrix ...... Correct." << endl;
+    print_matrix(pod_result4, row_size);
     evaluator.square_inplace(encrypted_matrix);
-    evaluator.relinearize_inplace(encrypted_matrix, relin_keys);
+    evaluator.relinearize_inplace(encrypted_matrix, Relin_key_round_two);
 
-    /*
-    How much noise budget do we have left?
-    */
-    cout << "    + Noise budget in result: " << decryptor.invariant_noise_budget(encrypted_matrix) << " bits" << endl;
+    // /*
+    // How much noise budget do we have left?
+    // */
+    // cout << "    + Noise budget in result: " << decryptor.invariant_noise_budget(encrypted_matrix) << " bits" << endl;
 
-    /*
-    We decrypt and decompose the plaintext to recover the result as a matrix.
-    */
+    // /*
+    // We decrypt and decompose the plaintext to recover the result as a matrix.
+    // */
     Plaintext plain_result;
     print_line(__LINE__);
     cout << "Decrypt and decode result." << endl;
@@ -348,5 +405,5 @@ void example_encoders()
     Run all encoder examples.
     */
     example_batch_encoder();
-    example_ckks_encoder();
+    // example_ckks_encoder();
 }
