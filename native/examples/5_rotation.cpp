@@ -32,10 +32,8 @@ void example_rotation_bfv()
     // vector<KeyGenerator> KeyGens(3);
     vector<SecretKey> SKS(3);
     vector<PublicKey> PKS(3);
-    // Serializable<PublicKey> PK0;
-    // Serializable<PublicKey> PK1;
-    // Serializable<PublicKey> PK2;
-    // vector<Serializable<PublicKey>> PKS_(3);
+    vector<RelinKeys> RKS_round_one(3);
+    
     vector<GaloisKeys> galois_keys_set(3);
 
 
@@ -50,50 +48,27 @@ void example_rotation_bfv()
     //     galois_keys_set[i] = KeyGens[i].create_galois_keys(galois_keys_set[i]);
     // }
     vector<int> steps(1,3);
-    stringstream pk_stream;
     SKS[0] = keygen1.secret_key();
-    // keygen1.create_public_key_crp(PKS[0]);
-    auto PK0 = keygen1.create_public_key_crp();
-    auto rotKey0 = keygen1.create_galois_keys_crp(steps);
+    keygen1.create_public_key_crp(PKS[0]);
+    keygen1.create_galois_keys_crp(steps,galois_keys_set[0]);
+    keygen1.create_relin_keys_round_one(RKS_round_one[0]);
+    // auto PK0 = keygen1.create_public_key_crp();
+    // auto rotKey0 = keygen1.create_galois_keys_crp(steps);
 
     SKS[1] = keygen2.secret_key();
-    auto PK1 = keygen2.create_public_key_crp();
-    auto rotKey1 = keygen2.create_galois_keys_crp(steps);
+    // auto PK1 = keygen2.create_public_key_crp();
+    // auto rotKey1 = keygen2.create_galois_keys_crp(steps);
 
-    // keygen2.create_public_key_crp(PKS[1]);
-    // keygen2.create_galois_keys_crp(steps,galois_keys_set[1]);
+    keygen2.create_public_key_crp(PKS[1]);
+    keygen2.create_galois_keys_crp(steps,galois_keys_set[1]);
+    keygen2.create_relin_keys_round_one(RKS_round_one[1]);
 
     SKS[2] = keygen3.secret_key();
-    // keygen2.create_public_key_crp(PKS[2]);
-    auto PK2 = keygen3.create_public_key_crp();
-    auto rotKey2 = keygen3.create_galois_keys_crp(steps);
-    // keygen3.create_galois_keys_crp(steps,galois_keys_set[2]);
-
-    PublicKey pks;
-    PK0.save(pk_stream);
-    PKS[0].load(context,pk_stream);
-    PK1.save(pk_stream);
-    PKS[1].load(context,pk_stream);
-    PK2.save(pk_stream);
-    PKS[2].load(context,pk_stream);
-
-    
-    // cout<< *PKS[0].data().data(1)<<endl;
-    // cout<< *PKS[0].data().data()<<endl;
-    // cout<< *PKS[1].data().data(1)<<endl;
-    // cout<< *PKS[1].data().data()<<endl;
-    // cout<< *PKS[2].data().data(1)<<endl;
-    // cout<< *PKS[2].data().data()<<endl;
-    // KeyGenerator keygen(context);
-    // SecretKey secret_key = keygen.secret_key();
-    // PublicKey public_key = keygen.create_public_key();
-    // GaloisKeys galois_keys = keygen.create_galois_keys();
-
-    // KeyGenerator keygen2(context);
-    // SecretKey secret_key2 = keygen2.secret_key();
-    // PublicKey public_key2 = keygen2.create_public_key();
-    // GaloisKeys galois_keys2 = keygen2.create_galois_keys();
-    // RelinKeys relin_keys = keygen.create_relin_keys();
+    keygen3.create_public_key_crp(PKS[2]);
+    // auto PK2 = keygen3.create_public_key_crp();
+    // auto rotKey2 = keygen3.create_galois_keys_crp(steps);
+    keygen3.create_galois_keys_crp(steps,galois_keys_set[2]);
+    keygen3.create_relin_keys_round_one(RKS_round_one[2]);
 
 
     PublicKey CPK;
@@ -102,12 +77,12 @@ void example_rotation_bfv()
     // KeyGenerator keygen(context);
     keygen.create_common_public_key(CPK,PKS,3);
     keygen.create_common_secret_key(CSK,SKS,3);
-    rotKey0.save(pk_stream);
-    galois_keys_set[0].load(context,pk_stream);
-    rotKey1.save(pk_stream);
-    galois_keys_set[1].load(context,pk_stream);
-    rotKey2.save(pk_stream);
-    galois_keys_set[2].load(context,pk_stream);
+    // rotKey0.save(pk_stream);
+    // galois_keys_set[0].load(context,pk_stream);
+    // rotKey1.save(pk_stream);
+    // galois_keys_set[1].load(context,pk_stream);
+    // rotKey2.save(pk_stream);
+    // galois_keys_set[2].load(context,pk_stream);
 
 
 
@@ -117,7 +92,20 @@ void example_rotation_bfv()
 
     GaloisKeys cRotKeys;
     keygen.gen_common_galois_keys(galois_keys_set,3,cRotKeys);
+    cout <<"Generate collective rotation key "<< endl;
 
+    RelinKeys Relin_key_round_one;
+    keygen.aggregate_relin_keys_round_one(Relin_key_round_one,RKS_round_one,3);
+    cout <<"Aggregate Relin key share round one "<< endl;
+
+    vector<RelinKeys> RKS_round_two;
+    keygen1.create_relin_keys_round_two(RKS_round_two[0],Relin_key_round_one);
+    keygen2.create_relin_keys_round_two(RKS_round_two[1],Relin_key_round_one);
+    keygen3.create_relin_keys_round_two(RKS_round_two[2],Relin_key_round_one);
+    cout <<"Generate Relin key share round two "<< endl;
+    RelinKeys Relin_key_round_two;
+    keygen.aggregate_relin_keys_round_two(Relin_key_round_two,Relin_key_round_one,RKS_round_two,3);
+    cout <<"Aggregate Relin key share round two "<< endl;
     Encryptor encryptor(context, CPK);
     Evaluator evaluator(context);
     Decryptor decryptor(context, CSK);
@@ -164,10 +152,14 @@ void example_rotation_bfv()
     batch_encoder.encode(pod_matrix, plain_matrix);
     Ciphertext encrypted_matrix;
     encryptor.encrypt(plain_matrix, encrypted_matrix);
-    cout << "    + Noise budget in fresh encryption: " << decryptor.invariant_noise_budget(encrypted_matrix) << " bits"
-         << endl;
-    cout << endl;
 
+    evaluator.square_inplace(encrypted_matrix);
+    evaluator.relinearize_inplace(encrypted_matrix, Relin_key_round_two);
+    
+    Plaintext plain_result0;
+    decryptor.decrypt(encrypted_matrix, plain_result0);
+    batch_encoder.decode(plain_result0, pod_matrix);
+    print_matrix(pod_matrix, row_size);
     /*
     Rotations require yet another type of special key called `Galois keys'. These
     are easily obtained from the KeyGenerator.
