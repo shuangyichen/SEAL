@@ -70,10 +70,15 @@ namespace seal
             destination = generate_pk(false);
         }
 
-        inline void create_public_key_crp(PublicKey &destination) const
+        inline void create_public_key_crp(PublicKey &destination) const //PublicKey &destination) const
         {
             destination = generate_pk_crp(false);
         }
+        SEAL_NODISCARD inline Serializable<PublicKey> create_public_key_crp() const
+        {
+            return generate_pk_crp(true);
+        }
+
 
         inline void create_public_key_with_com_ref_poly(PublicKey &destination) const
         {
@@ -193,6 +198,11 @@ namespace seal
             destination = create_galois_keys_crp(galois_elts, false);
         }
 
+        SEAL_NODISCARD inline Serializable<GaloisKeys> create_galois_keys_crp(const std::vector<std::uint32_t> &galois_elts)
+        {
+            return create_galois_keys_crp(galois_elts, true);
+        }
+
         /**
         Generates and returns Galois keys as a serializable object. Every time
         this function is called, new Galois keys will be generated.
@@ -293,6 +303,11 @@ namespace seal
             return create_galois_keys(context_.key_context_data()->galois_tool()->get_elts_from_steps(steps));
         }
 
+        SEAL_NODISCARD inline Serializable<GaloisKeys> create_galois_keys_crp(const std::vector<int> &steps)
+        {
+            return create_galois_keys_crp(context_.key_context_data()->galois_tool()->get_elts_from_steps(steps));
+        }
+
         
 
         /**
@@ -338,6 +353,10 @@ namespace seal
         SEAL_NODISCARD inline Serializable<GaloisKeys> create_galois_keys()
         {
             return create_galois_keys(context_.key_context_data()->galois_tool()->get_elts_all());
+        }
+        SEAL_NODISCARD inline Serializable<GaloisKeys> create_galois_keys_crp()
+        {
+            return create_galois_keys_crp(context_.key_context_data()->galois_tool()->get_elts_all());
         }
 
         /**

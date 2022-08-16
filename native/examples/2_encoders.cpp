@@ -70,53 +70,53 @@ void example_batch_encoder()
     cout << "Batching enabled: " << boolalpha << qualifiers.using_batching << endl;
 
 
-    vector<SecretKey> SKS(3);
-    vector<PublicKey> PKS(3);
-    vector<RelinKeys> RKS_round_one(3);
+    // vector<SecretKey> SKS(3);
+    // vector<PublicKey> PKS(3);
+    // vector<RelinKeys> RKS_round_one(3);
 
-    KeyGenerator keygen1(context);
-    KeyGenerator keygen2(context);
-    KeyGenerator keygen3(context);
+    // KeyGenerator keygen1(context);
+    // KeyGenerator keygen2(context);
+    // KeyGenerator keygen3(context);
 
-    //party0
-    SKS[0] = keygen1.secret_key();
-    keygen1.create_public_key_crp(PKS[0]);
-    keygen1.create_relin_keys_round_one(RKS_round_one[0]);
-    //party1
-    SKS[1] = keygen2.secret_key();
-    keygen2.create_public_key_crp(PKS[1]);
-    keygen2.create_relin_keys_round_one(RKS_round_one[1]);
-    //party2
-    SKS[2] = keygen3.secret_key();
-    keygen3.create_public_key_crp(PKS[2]);
-    keygen3.create_relin_keys_round_one(RKS_round_one[2]);
-    PublicKey CPK;
-    SecretKey CSK;
-    RelinKeys Relin_key_round_one;
-    RelinKeys Relin_key_round_two;
-    KeyGenerator keygen(context);
+    // //party0
+    // SKS[0] = keygen1.secret_key();
+    // keygen1.create_public_key_crp(PKS[0]);
+    // keygen1.create_relin_keys_round_one(RKS_round_one[0]);
+    // //party1
+    // SKS[1] = keygen2.secret_key();
+    // keygen2.create_public_key_crp(PKS[1]);
+    // keygen2.create_relin_keys_round_one(RKS_round_one[1]);
+    // //party2
+    // SKS[2] = keygen3.secret_key();
+    // keygen3.create_public_key_crp(PKS[2]);
+    // keygen3.create_relin_keys_round_one(RKS_round_one[2]);
+    // PublicKey CPK;
+    // SecretKey CSK;
+    // RelinKeys Relin_key_round_one;
+    // RelinKeys Relin_key_round_two;
     // KeyGenerator keygen(context);
-    keygen.create_common_public_key(CPK,PKS,3);
-    keygen.create_common_secret_key(CSK,SKS,3);
-    cout <<"Generate CPK, CSK"<< endl;
-    keygen.aggregate_relin_keys_round_one(Relin_key_round_one,RKS_round_one,3);
-    cout <<"Generate relin key round one"<< endl;
+    // // KeyGenerator keygen(context);
+    // keygen.create_common_public_key(CPK,PKS,3);
+    // keygen.create_common_secret_key(CSK,SKS,3);
+    // cout <<"Generate CPK, CSK"<< endl;
+    // keygen.aggregate_relin_keys_round_one(Relin_key_round_one,RKS_round_one,3);
+    // cout <<"Generate relin key round one"<< endl;
     // cout<< "Relin_key_round_one"<<endl;
     // cout<< Relin_key_round_one.data().size()<<endl;
     // cout<< Relin_key_round_one.data()[0].size()<<endl;
     // cout<< Relin_key_round_one.data()[0][0].size()<<endl;
     // //relin key round 2
-    vector<RelinKeys> RKS_round_two(3);
+    // vector<RelinKeys> RKS_round_two(3);
 
-    keygen1.create_relin_keys_round_two(RKS_round_two[0],Relin_key_round_one);
-    keygen2.create_relin_keys_round_two(RKS_round_two[1],Relin_key_round_one);
-    keygen3.create_relin_keys_round_two(RKS_round_two[2],Relin_key_round_one);
-    cout <<"Round two share generating"<< endl;
-    keygen.aggregate_relin_keys_round_two(Relin_key_round_two,Relin_key_round_one,RKS_round_two,3);
-    cout <<"RelinKey generated"<< endl;
-    Encryptor encryptor(context, CPK);
-    Evaluator evaluator(context);
-    Decryptor decryptor(context, CSK);
+    // keygen1.create_relin_keys_round_two(RKS_round_two[0],Relin_key_round_one);
+    // keygen2.create_relin_keys_round_two(RKS_round_two[1],Relin_key_round_one);
+    // keygen3.create_relin_keys_round_two(RKS_round_two[2],Relin_key_round_one);
+    // cout <<"Round two share generating"<< endl;
+    // keygen.aggregate_relin_keys_round_two(Relin_key_round_two,Relin_key_round_one,RKS_round_two,3);
+    // cout <<"RelinKey generated"<< endl;
+    // Encryptor encryptor(context, CPK);
+    // Evaluator evaluator(context);
+    // Decryptor decryptor(context, CSK);
 
     // KeyGenerator keygen(context);
     // SecretKey secret_key = keygen.secret_key();
@@ -131,16 +131,16 @@ void example_batch_encoder()
     /*
     Batching is done through an instance of the BatchEncoder class.
     */
-    BatchEncoder batch_encoder(context);
+    // BatchEncoder batch_encoder(context);
     
     /*
     The total number of batching `slots' equals the poly_modulus_degree, N, and
     these slots are organized into 2-by-(N/2) matrices that can be encrypted and
     computed on. Each slot contains an integer modulo plain_modulus.
     */
-    size_t slot_count = batch_encoder.slot_count();
-    size_t row_size = slot_count / 2;
-    cout << "Plaintext matrix row size: " << row_size << endl;
+    // size_t slot_count = batch_encoder.slot_count();
+    // size_t row_size = slot_count / 2;
+    // cout << "Plaintext matrix row size: " << row_size << endl;
 
     /*
     The matrix plaintext is simply given to BatchEncoder as a flattened vector
@@ -150,45 +150,45 @@ void example_batch_encoder()
         [ 0,  1,  2,  3,  0,  0, ...,  0 ]
         [ 4,  5,  6,  7,  0,  0, ...,  0 ]
     */
-    vector<uint64_t> pod_matrix(slot_count, 0ULL);
-    pod_matrix[0] = 0ULL;
-    pod_matrix[1] = 1ULL;
-    pod_matrix[2] = 2ULL;
-    pod_matrix[3] = 3ULL;
-    pod_matrix[row_size] = 4ULL;
-    pod_matrix[row_size + 1] = 5ULL;
-    pod_matrix[row_size + 2] = 6ULL;
-    pod_matrix[row_size + 3] = 7ULL;
+    // vector<uint64_t> pod_matrix(slot_count, 0ULL);
+    // pod_matrix[0] = 0ULL;
+    // pod_matrix[1] = 1ULL;
+    // pod_matrix[2] = 2ULL;
+    // pod_matrix[3] = 3ULL;
+    // pod_matrix[row_size] = 4ULL;
+    // pod_matrix[row_size + 1] = 5ULL;
+    // pod_matrix[row_size + 2] = 6ULL;
+    // pod_matrix[row_size + 3] = 7ULL;
 
-    cout << "Input plaintext matrix:" << endl;
-    print_matrix(pod_matrix, row_size);
+    // cout << "Input plaintext matrix:" << endl;
+    // print_matrix(pod_matrix, row_size);
 
     /*
     First we use BatchEncoder to encode the matrix into a plaintext polynomial.
     */
-    Plaintext plain_matrix;
-    print_line(__LINE__);
-    cout << "Encode plaintext matrix:" << endl;
-    batch_encoder.encode(pod_matrix, plain_matrix);
+    // Plaintext plain_matrix;
+    // print_line(__LINE__);
+    // cout << "Encode plaintext matrix:" << endl;
+    // batch_encoder.encode(pod_matrix, plain_matrix);
 
     /*
     We can instantly decode to verify correctness of the encoding. Note that no
     encryption or decryption has yet taken place.
     */
-    vector<uint64_t> pod_result;
-    cout << "    + Decode plaintext matrix ...... Correct." << endl;
-    batch_encoder.decode(plain_matrix, pod_result);
-    print_matrix(pod_result, row_size);
+    // vector<uint64_t> pod_result;
+    // cout << "    + Decode plaintext matrix ...... Correct." << endl;
+    // batch_encoder.decode(plain_matrix, pod_result);
+    // print_matrix(pod_result, row_size);
 
     /*
     Next we encrypt the encoded plaintext.
     */
-    Ciphertext encrypted_matrix;
-    print_line(__LINE__);
-    cout << "Encrypt plain_matrix to encrypted_matrix." << endl;
-    encryptor.encrypt(plain_matrix, encrypted_matrix);
-    cout << "    + Noise budget in encrypted_matrix: " << decryptor.invariant_noise_budget(encrypted_matrix) << " bits"
-         << endl;
+    // Ciphertext encrypted_matrix;
+    // print_line(__LINE__);
+    // cout << "Encrypt plain_matrix to encrypted_matrix." << endl;
+    // encryptor.encrypt(plain_matrix, encrypted_matrix);
+    // cout << "    + Noise budget in encrypted_matrix: " << decryptor.invariant_noise_budget(encrypted_matrix) << " bits"
+    //      << endl;
 
     /*
     Operating on the ciphertext results in homomorphic operations being performed
@@ -200,32 +200,32 @@ void example_batch_encoder()
 
     and encode it into a plaintext.
     */
-    vector<uint64_t> pod_matrix2;
-    for (size_t i = 0; i < slot_count; i++)
-    {
-        pod_matrix2.push_back((i & size_t(0x1)) + 1);
-    }
-    Plaintext plain_matrix2;
-    batch_encoder.encode(pod_matrix2, plain_matrix2);
-    cout << endl;
-    cout << "Second input plaintext matrix:" << endl;
-    print_matrix(pod_matrix2, row_size);
+    // vector<uint64_t> pod_matrix2;
+    // for (size_t i = 0; i < slot_count; i++)
+    // {
+    //     pod_matrix2.push_back((i & size_t(0x1)) + 1);
+    // }
+    // Plaintext plain_matrix2;
+    // batch_encoder.encode(pod_matrix2, plain_matrix2);
+    // cout << endl;
+    // cout << "Second input plaintext matrix:" << endl;
+    // print_matrix(pod_matrix2, row_size);
 
     /*
     We now add the second (plaintext) matrix to the encrypted matrix, and square
     the sum.
     */
-    print_line(__LINE__);
-    Plaintext plain_result4;
-    vector<uint64_t> pod_result4;
-    cout << "Sum, square, and relinearize." << endl;
-    evaluator.add_plain_inplace(encrypted_matrix, plain_matrix2);
-    decryptor.decrypt(encrypted_matrix, plain_result4);
-    batch_encoder.decode(plain_result4, pod_result4);
-    cout << "    + Result plaintext matrix ...... Correct." << endl;
-    print_matrix(pod_result4, row_size);
-    evaluator.square_inplace(encrypted_matrix);
-    evaluator.relinearize_inplace(encrypted_matrix, Relin_key_round_two);
+    // print_line(__LINE__);
+    // Plaintext plain_result4;
+    // vector<uint64_t> pod_result4;
+    // cout << "Sum, square, and relinearize." << endl;
+    // evaluator.add_plain_inplace(encrypted_matrix, plain_matrix2);
+    // decryptor.decrypt(encrypted_matrix, plain_result4);
+    // batch_encoder.decode(plain_result4, pod_result4);
+    // cout << "    + Result plaintext matrix ...... Correct." << endl;
+    // print_matrix(pod_result4, row_size);
+    // evaluator.square_inplace(encrypted_matrix);
+    // evaluator.relinearize_inplace(encrypted_matrix, Relin_key_round_two);
 
     // /*
     // How much noise budget do we have left?
@@ -235,13 +235,13 @@ void example_batch_encoder()
     // /*
     // We decrypt and decompose the plaintext to recover the result as a matrix.
     // */
-    Plaintext plain_result;
-    print_line(__LINE__);
-    cout << "Decrypt and decode result." << endl;
-    decryptor.decrypt(encrypted_matrix, plain_result);
-    batch_encoder.decode(plain_result, pod_result);
-    cout << "    + Result plaintext matrix ...... Correct." << endl;
-    print_matrix(pod_result, row_size);
+    // Plaintext plain_result;
+    // print_line(__LINE__);
+    // cout << "Decrypt and decode result." << endl;
+    // decryptor.decrypt(encrypted_matrix, plain_result);
+    // batch_encoder.decode(plain_result, pod_result);
+    // cout << "    + Result plaintext matrix ...... Correct." << endl;
+    // print_matrix(pod_result, row_size);
 
     /*
     Batching allows us to efficiently use the full plaintext polynomial when the
