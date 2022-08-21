@@ -17,9 +17,11 @@ int main()
         cout << "+---------------------------------------------------------+" << endl;
         cout << "| Examples                   | Source Files               |" << endl;
         cout << "+----------------------------+----------------------------+" << endl;
-        cout << "| 1. BFV Basics              | 1_bfv_basics.cpp           |" << endl;
-        cout << "| 2. Encoders                | 2_encoders.cpp             |" << endl;
-        cout << "| 3. Levels                  | 3_levels.cpp               |" << endl;
+        cout << "| 1. CPK generation          | 1_.cpp                     |" << endl;
+        cout << "|   and distribute decryption|                            |" << endl;
+        cout << "| 2. Relin key use           | 2_.cpp                     |" << endl;
+        cout << "| 3. Inner product           | 3_.cpp                     |" << endl;
+        cout << "|    of 2 vectors            |                            |" << endl;
         cout << "| 4. CKKS Basics             | 4_ckks_basics.cpp          |" << endl;
         cout << "| 5. Rotation                | 5_rotation.cpp             |" << endl;
         cout << "| 6. Serialization           | 6_serialization.cpp        |" << endl;

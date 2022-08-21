@@ -8,84 +8,30 @@ using namespace seal;
 
 void example_levels()
 {
-    print_example_banner("Example: Levels");
+    print_example_banner("Example: Inner product of two vectors");
 
     /*
-    In this examples we describe the concept of `levels' in BFV and CKKS and the
-    related objects that represent them in Microsoft SEAL.
+    [BatchEncoder] (For BFV scheme only)
 
-    In Microsoft SEAL a set of encryption parameters (excluding the random number
-    generator) is identified uniquely by a 256-bit hash of the parameters. This
-    hash is called the `parms_id' and can be easily accessed and printed at any
-    time. The hash will change as soon as any of the parameters is changed.
-
-    When a SEALContext is created from a given EncryptionParameters instance,
-    Microsoft SEAL automatically creates a so-called `modulus switching chain',
-    which is a chain of other encryption parameters derived from the original set.
-    The parameters in the modulus switching chain are the same as the original
-    parameters with the exception that size of the coefficient modulus is
-    decreasing going down the chain. More precisely, each parameter set in the
-    chain attempts to remove the last coefficient modulus prime from the
-    previous set; this continues until the parameter set is no longer valid
-    (e.g., plain_modulus is larger than the remaining coeff_modulus). It is easy
-    to walk through the chain and access all the parameter sets. Additionally,
-    each parameter set in the chain has a `chain index' that indicates its
-    position in the chain so that the last set has index 0. We say that a set
-    of encryption parameters, or an object carrying those encryption parameters,
-    is at a higher level in the chain than another set of parameters if its the
-    chain index is bigger, i.e., it is earlier in the chain.
-
-    Each set of parameters in the chain involves unique pre-computations performed
-    when the SEALContext is created, and stored in a SEALContext::ContextData
-    object. The chain is basically a linked list of SEALContext::ContextData
-    objects, and can easily be accessed through the SEALContext at any time. Each
-    node can be identified by the parms_id of its specific encryption parameters
-    (poly_modulus_degree remains the same but coeff_modulus varies).
+    Let N denote the poly_modulus_degree and T denote the plain_modulus. Batching
+    allows the BFV plaintext polynomials to be viewed as 2-by-(N/2) matrices, with
+    each element an integer modulo T. In the matrix view, encrypted operations act
+    element-wise on encrypted matrices, allowing the user to obtain speeds-ups of
+    several orders of magnitude in fully vectorizable computations. Thus, in all
+    but the simplest computations, batching should be the preferred method to use
+    with BFV, and when used properly will result in implementations outperforming
+    anything done without batching.
     */
     EncryptionParameters parms(scheme_type::bfv);
-
     size_t poly_modulus_degree = 8192;
     parms.set_poly_modulus_degree(poly_modulus_degree);
+    parms.set_coeff_modulus(CoeffModulus::BFVDefault(poly_modulus_degree));
 
     /*
-    In this example we use a custom coeff_modulus, consisting of 5 primes of
-    sizes 50, 30, 30, 50, and 50 bits. Note that this is still OK according to
-    the explanation in `1_bfv_basics.cpp'. Indeed,
-
-        CoeffModulus::MaxBitCount(poly_modulus_degree)
-
-    returns 218 (greater than 50+30+30+50+50=210).
-
-    Due to the modulus switching chain, the order of the 5 primes is significant.
-    The last prime has a special meaning and we call it the `special prime'. Thus,
-    the first parameter set in the modulus switching chain is the only one that
-    involves the special prime. All key objects, such as SecretKey, are created
-    at this highest level. All data objects, such as Ciphertext, can be only at
-    lower levels. The special prime should be as large as the largest of the
-    other primes in the coeff_modulus, although this is not a strict requirement.
-
-              special prime +---------+
-                                      |
-                                      v
-    coeff_modulus: { 50, 30, 30, 50, 50 }  +---+  Level 4 (all keys; `key level')
-                                               |
-                                               |
-        coeff_modulus: { 50, 30, 30, 50 }  +---+  Level 3 (highest `data level')
-                                               |
-                                               |
-            coeff_modulus: { 50, 30, 30 }  +---+  Level 2
-                                               |
-                                               |
-                coeff_modulus: { 50, 30 }  +---+  Level 1
-                                               |
-                                               |
-                    coeff_modulus: { 50 }  +---+  Level 0 (lowest level)
-    */
-    parms.set_coeff_modulus(CoeffModulus::Create(poly_modulus_degree, { 50, 30, 30, 50, 50 }));
-
-    /*
-    In this example the plain_modulus does not play much of a role; we choose
-    some reasonable value.
+    To enable batching, we need to set the plain_modulus to be a prime number
+    congruent to 1 modulo 2*poly_modulus_degree. Microsoft SEAL provides a helper
+    method for finding such a prime. In this example we create a 20-bit prime
+    that supports batching.
     */
     parms.set_plain_modulus(PlainModulus::Batching(poly_modulus_degree, 20));
 
@@ -94,238 +40,239 @@ void example_levels()
     cout << endl;
 
     /*
-    There are convenience method for accessing the SEALContext::ContextData for
-    some of the most important levels:
-
-        SEALContext::key_context_data(): access to key level ContextData
-        SEALContext::first_context_data(): access to highest data level ContextData
-        SEALContext::last_context_data(): access to lowest level ContextData
-
-    We iterate over the chain and print the parms_id for each set of parameters.
+    We can verify that batching is indeed enabled by looking at the encryption
+    parameter qualifiers created by SEALContext.
     */
+    auto qualifiers = context.first_context_data()->qualifiers();
+    cout << "Batching enabled: " << boolalpha << qualifiers.using_batching << endl;
+
+
+    vector<SecretKey> SKS(3);
+    vector<PublicKey> PKS(3);
+    vector<RelinKeys> RKS_round_one(3);
+    vector<GaloisKeys> galois_keys_set(3);
+
+
+    KeyGenerator keygen1(context);
+    KeyGenerator keygen2(context);
+    KeyGenerator keygen3(context);
+    vector<int> steps(2);
+    steps[0] = 1;
+    steps[1] = 5;
+    //party0
     print_line(__LINE__);
-    cout << "Print the modulus switching chain." << endl;
-
-    /*
-    First print the key level parameter information.
-    */
-    auto context_data = context.key_context_data();
-    cout << "----> Level (chain index): " << context_data->chain_index();
-    cout << " ...... key_context_data()" << endl;
-    cout << "      parms_id: " << context_data->parms_id() << endl;
-    cout << "      coeff_modulus primes: ";
-    cout << hex;
-    for (const auto &prime : context_data->parms().coeff_modulus())
-    {
-        cout << prime.value() << " ";
-    }
-    cout << dec << endl;
-    cout << "\\" << endl;
-    cout << " \\-->";
-
-    /*
-    Next iterate over the remaining (data) levels.
-    */
-    context_data = context.first_context_data();
-    while (context_data)
-    {
-        cout << " Level (chain index): " << context_data->chain_index();
-        if (context_data->parms_id() == context.first_parms_id())
-        {
-            cout << " ...... first_context_data()" << endl;
-        }
-        else if (context_data->parms_id() == context.last_parms_id())
-        {
-            cout << " ...... last_context_data()" << endl;
-        }
-        else
-        {
-            cout << endl;
-        }
-        cout << "      parms_id: " << context_data->parms_id() << endl;
-        cout << "      coeff_modulus primes: ";
-        cout << hex;
-        for (const auto &prime : context_data->parms().coeff_modulus())
-        {
-            cout << prime.value() << " ";
-        }
-        cout << dec << endl;
-        cout << "\\" << endl;
-        cout << " \\-->";
-
-        /*
-        Step forward in the chain.
-        */
-        context_data = context_data->next_context_data();
-    }
-    cout << " End of chain reached" << endl << endl;
-
-    /*
-    We create some keys and check that indeed they appear at the highest level.
-    */
+    cout <<"Party 0 generating key pair"<< endl;
+    SKS[0] = keygen1.secret_key();
+    keygen1.create_public_key_crp(PKS[0]);
+    keygen1.create_relin_keys_round_one(RKS_round_one[0]);
+    keygen1.create_galois_keys_crp(steps,galois_keys_set[0]);
+    //party1
+    print_line(__LINE__);
+    cout <<"Party 1 generating key pair"<< endl;
+    SKS[1] = keygen2.secret_key();
+    keygen2.create_public_key_crp(PKS[1]);
+    keygen2.create_relin_keys_round_one(RKS_round_one[1]);
+    keygen2.create_galois_keys_crp(steps,galois_keys_set[1]);
+    //party2
+    print_line(__LINE__);
+    cout <<"Party 2 generating key pair"<< endl;
+    SKS[2] = keygen3.secret_key();
+    keygen3.create_public_key_crp(PKS[2]);
+    keygen3.create_relin_keys_round_one(RKS_round_one[2]);
+    keygen3.create_galois_keys_crp(steps,galois_keys_set[2]);
+    PublicKey CPK;
+    SecretKey CSK;
+    RelinKeys Relin_key_round_one;
+    RelinKeys Relin_key_round_two;
     KeyGenerator keygen(context);
-    auto secret_key = keygen.secret_key();
-    PublicKey public_key;
-    keygen.create_public_key(public_key);
-    RelinKeys relin_keys;
-    keygen.create_relin_keys(relin_keys);
+    // // KeyGenerator keygen(context);
+    print_line(__LINE__);
+    cout <<"Server aggregating public keys to generate common public key"<< endl;
+    keygen.create_common_public_key(CPK,PKS,3);
+    keygen.create_common_secret_key(CSK,SKS,3);
+    print_line(__LINE__);
+    cout <<"Server aggregating rotation keys to generate common rotation key"<< endl;
+    GaloisKeys cRotKeys;
+    keygen.gen_common_galois_keys(galois_keys_set,3,cRotKeys);
+   
+    print_line(__LINE__);
+    cout <<"Server aggregating relinearization key share of round 1 to generate common relin key share of round 1"<< endl;
+    keygen.aggregate_relin_keys_round_one(Relin_key_round_one,RKS_round_one,3);
+    // cout <<"Generate relin key round one"<< endl;
+    // cout<< "Relin_key_round_one"<<endl;
+    // cout<< Relin_key_round_one.data().size()<<endl;
+    // cout<< Relin_key_round_one.data()[0].size()<<endl;
+    // cout<< Relin_key_round_one.data()[0][0].size()<<endl;
+    // //relin key round 2
+    vector<RelinKeys> RKS_round_two(3);
 
     print_line(__LINE__);
-    cout << "Print the parameter IDs of generated elements." << endl;
-    cout << "    + public_key:  " << public_key.parms_id() << endl;
-    cout << "    + secret_key:  " << secret_key.parms_id() << endl;
-    cout << "    + relin_keys:  " << relin_keys.parms_id() << endl;
-
-    Encryptor encryptor(context, public_key);
+    cout <<"Party 0 generating relin keys share of round 2 based on common relin key share of round 1"<< endl;
+    keygen1.create_relin_keys_round_two(RKS_round_two[0],Relin_key_round_one);
+    print_line(__LINE__);
+    cout <<"Party 1 generating relin keys share of round 2 based on common relin key share of round 1"<< endl;
+    keygen2.create_relin_keys_round_two(RKS_round_two[1],Relin_key_round_one);
+    print_line(__LINE__);
+    cout <<"Party 2 generating relin keys share of round 2 based on common relin key share of round 1"<< endl;
+    keygen3.create_relin_keys_round_two(RKS_round_two[2],Relin_key_round_one);
+    // cout <<"Round two share generating"<< endl;
+    print_line(__LINE__);
+    cout <<"Server aggregating relinearization key share of round 2 to generate common relin key "<< endl;
+    keygen.aggregate_relin_keys_round_two(Relin_key_round_two,Relin_key_round_one,RKS_round_two,3);
+    // cout <<"RelinKey generated"<< endl;
+    Encryptor encryptor(context, CPK);
     Evaluator evaluator(context);
-    Decryptor decryptor(context, secret_key);
+    Decryptor decryptor(context, CSK);
+
+
 
     /*
-    In the BFV scheme plaintexts do not carry a parms_id, but ciphertexts do. Note
-    how the freshly encrypted ciphertext is at the highest data level.
+    Batching is done through an instance of the BatchEncoder class.
     */
-    Plaintext plain("1x^3 + 2x^2 + 3x^1 + 4");
-    Ciphertext encrypted;
-    encryptor.encrypt(plain, encrypted);
-    cout << "    + plain:       " << plain.parms_id() << " (not set in BFV)" << endl;
-    cout << "    + encrypted:   " << encrypted.parms_id() << endl << endl;
+    BatchEncoder batch_encoder(context);
+    
+    /*
+    The total number of batching `slots' equals the poly_modulus_degree, N, and
+    these slots are organized into 2-by-(N/2) matrices that can be encrypted and
+    computed on. Each slot contains an integer modulo plain_modulus.
+    */
+    size_t slot_count = batch_encoder.slot_count();
+    // size_t row_size = slot_count / 2;
+    // cout << "Plaintext matrix row size: " << row_size << endl;
 
     /*
-    `Modulus switching' is a technique of changing the ciphertext parameters down
-    in the chain. The function Evaluator::mod_switch_to_next always switches to
-    the next level down the chain, whereas Evaluator::mod_switch_to switches to
-    a parameter set down the chain corresponding to a given parms_id. However, it
-    is impossible to switch up in the chain.
+    The matrix plaintext is simply given to BatchEncoder as a flattened vector
+    of numbers. The first `row_size' many numbers form the first row, and the
+    rest form the second row. Here we create the following matrix:
+
+        [ 0,  1,  2,  3,  0,  0, ...,  0 ]
+        [ 4,  5,  6,  7,  0,  0, ...,  0 ]
     */
+    vector<uint64_t> pod_matrix(slot_count, 0ULL);
+    pod_matrix[0] = 1ULL;
+    pod_matrix[1] = 2ULL;
+    pod_matrix[2] = 3ULL;
+    pod_matrix[3] = 4ULL;
+    pod_matrix[4] = 5ULL;
+    // pod_matrix[row_size] = 4ULL;
+    // pod_matrix[row_size + 1] = 5ULL;
+    // pod_matrix[row_size + 2] = 6ULL;
+    // pod_matrix[row_size + 3] = 7ULL;
+
+    cout << "Input plaintext vector:" << endl;
+    print_vector(pod_matrix, 6);
+
+    /*
+    First we use BatchEncoder to encode the matrix into a plaintext polynomial.
+    */
+    Plaintext plain_matrix;
     print_line(__LINE__);
-    cout << "Perform modulus switching on encrypted and print." << endl;
-    context_data = context.first_context_data();
-    cout << "---->";
-    while (context_data->next_context_data())
-    {
-        cout << " Level (chain index): " << context_data->chain_index() << endl;
-        cout << "      parms_id of encrypted: " << encrypted.parms_id() << endl;
-        cout << "      Noise budget at this level: " << decryptor.invariant_noise_budget(encrypted) << " bits" << endl;
-        cout << "\\" << endl;
-        cout << " \\-->";
-        evaluator.mod_switch_to_next_inplace(encrypted);
-        context_data = context_data->next_context_data();
-    }
-    cout << " Level (chain index): " << context_data->chain_index() << endl;
-    cout << "      parms_id of encrypted: " << encrypted.parms_id() << endl;
-    cout << "      Noise budget at this level: " << decryptor.invariant_noise_budget(encrypted) << " bits" << endl;
-    cout << "\\" << endl;
-    cout << " \\-->";
-    cout << " End of chain reached" << endl << endl;
+    cout << "Encode plaintext vector:" << endl;
+    batch_encoder.encode(pod_matrix, plain_matrix);
 
     /*
-    At this point it is hard to see any benefit in doing this: we lost a huge
-    amount of noise budget (i.e., computational power) at each switch and seemed
-    to get nothing in return. Decryption still works.
+    We can instantly decode to verify correctness of the encoding. Note that no
+    encryption or decryption has yet taken place.
     */
+    // vector<uint64_t> pod_result;
+    // cout << "    + Decode plaintext matrix ...... Correct." << endl;
+    // batch_encoder.decode(plain_matrix, pod_result);
+    // print_vector(pod_result, 5);
+
+    /*
+    Next we encrypt the encoded plaintext.
+    */
+    Ciphertext encrypted_matrix;
     print_line(__LINE__);
-    cout << "Decrypt still works after modulus switching." << endl;
-    decryptor.decrypt(encrypted, plain);
-    cout << "    + Decryption of encrypted: " << plain.to_string();
-    cout << " ...... Correct." << endl << endl;
+    cout << "Encrypt plain_vector to encrypted_vector." << endl;
+    encryptor.encrypt(plain_matrix, encrypted_matrix);
+    // cout << "    + Noise budget in encrypted_matrix: " << decryptor.invariant_noise_budget(encrypted_matrix) << " bits"
+    //      << endl;
 
     /*
-    However, there is a hidden benefit: the size of the ciphertext depends
-    linearly on the number of primes in the coefficient modulus. Thus, if there
-    is no need or intention to perform any further computations on a given
-    ciphertext, we might as well switch it down to the smallest (last) set of
-    parameters in the chain before sending it back to the secret key holder for
-    decryption.
+    Operating on the ciphertext results in homomorphic operations being performed
+    simultaneously in all 8192 slots (matrix elements). To illustrate this, we
+    form another plaintext matrix
 
-    Also the lost noise budget is actually not an issue at all, if we do things
-    right, as we will see below.
+        [ 1,  2,  1,  2,  1,  2, ..., 2 ]
+        [ 1,  2,  1,  2,  1,  2, ..., 2 ]
 
-    First we recreate the original ciphertext and perform some computations.
+    and encode it into a plaintext.
     */
-    cout << "Computation is more efficient with modulus switching." << endl;
+    vector<uint64_t> pod_matrix2(slot_count, 0ULL);
+    pod_matrix2[0] = 1ULL;
+    pod_matrix2[1] = 2ULL;
+    pod_matrix2[2] = 1ULL;
+    pod_matrix2[3] = 2ULL;
+    pod_matrix2[4] = 1ULL;
+    Plaintext plain_matrix2;
+    batch_encoder.encode(pod_matrix2, plain_matrix2);
+    cout << endl;
+    cout << "Second input plaintext vector:" << endl;
+    print_vector(pod_matrix2, 6);
+
+    /*
+    We now add the second (plaintext) matrix to the encrypted matrix, and square
+    the sum.
+    */
+    // print_line(__LINE__);
+    Plaintext plain_result2;
     print_line(__LINE__);
-    cout << "Compute the 8th power." << endl;
-    encryptor.encrypt(plain, encrypted);
-    cout << "    + Noise budget fresh:                   " << decryptor.invariant_noise_budget(encrypted) << " bits"
-         << endl;
-    evaluator.square_inplace(encrypted);
-    evaluator.relinearize_inplace(encrypted, relin_keys);
-    cout << "    + Noise budget of the 2nd power:         " << decryptor.invariant_noise_budget(encrypted) << " bits"
-         << endl;
-    evaluator.square_inplace(encrypted);
-    evaluator.relinearize_inplace(encrypted, relin_keys);
-    cout << "    + Noise budget of the 4th power:         " << decryptor.invariant_noise_budget(encrypted) << " bits"
-         << endl;
-
-    /*
-    Surprisingly, in this case modulus switching has no effect at all on the
-    noise budget.
-    */
-    evaluator.mod_switch_to_next_inplace(encrypted);
-    cout << "    + Noise budget after modulus switching:  " << decryptor.invariant_noise_budget(encrypted) << " bits"
-         << endl;
-    /*
-    This means that there is no harm at all in dropping some of the coefficient
-    modulus after doing enough computations. In some cases one might want to
-    switch to a lower level slightly earlier, actually sacrificing some of the
-    noise budget in the process, to gain computational performance from having
-    smaller parameters. We see from the print-out that the next modulus switch
-    should be done ideally when the noise budget is down to around 25 bits.
-    */
-    evaluator.square_inplace(encrypted);
-    evaluator.relinearize_inplace(encrypted, relin_keys);
-    cout << "    + Noise budget of the 8th power:         " << decryptor.invariant_noise_budget(encrypted) << " bits"
-         << endl;
-    evaluator.mod_switch_to_next_inplace(encrypted);
-    cout << "    + Noise budget after modulus switching:  " << decryptor.invariant_noise_budget(encrypted) << " bits"
-         << endl;
-
-    /*
-    At this point the ciphertext still decrypts correctly, has very small size,
-    and the computation was as efficient as possible. Note that the decryptor
-    can be used to decrypt a ciphertext at any level in the modulus switching
-    chain.
-    */
-    decryptor.decrypt(encrypted, plain);
-    cout << "    + Decryption of the 8th power (hexadecimal) ...... Correct." << endl;
-    cout << "    " << plain.to_string() << endl << endl;
-
-    /*
-    In BFV modulus switching is not necessary and in some cases the user might
-    not want to create the modulus switching chain, except for the highest two
-    levels. This can be done by passing a bool `false' to SEALContext constructor.
-    */
-    context = SEALContext(parms, false);
-
-    /*
-    We can check that indeed the modulus switching chain has been created only
-    for the highest two levels (key level and highest data level). The following
-    loop should execute only once.
-    */
-    cout << "Optionally disable modulus switching chain expansion." << endl;
+    cout << "Encode plaintext to plain_vector2:" << endl;
+    batch_encoder.encode(pod_matrix2, plain_result2);
+    Ciphertext encrypted_matrix2;
     print_line(__LINE__);
-    cout << "Print the modulus switching chain." << endl;
-    cout << "---->";
-    for (context_data = context.key_context_data(); context_data; context_data = context_data->next_context_data())
-    {
-        cout << " Level (chain index): " << context_data->chain_index() << endl;
-        cout << "      parms_id: " << context_data->parms_id() << endl;
-        cout << "      coeff_modulus primes: ";
-        cout << hex;
-        for (const auto &prime : context_data->parms().coeff_modulus())
-        {
-            cout << prime.value() << " ";
-        }
-        cout << dec << endl;
-        cout << "\\" << endl;
-        cout << " \\-->";
-    }
-    cout << " End of chain reached" << endl << endl;
+    cout << "Encrypt plain_vector2 to encrypted_vector2." << endl;
+    encryptor.encrypt(plain_result2, encrypted_matrix2);
+    // vector<uint64_t> pod_result4;
+    // cout << "Sum, square, and relinearize." << endl;
+    // encrypted_matrix2
+    print_line(__LINE__);
+    cout << "Multiply encrypted_vector with encrypted_vector2." << endl;
+    evaluator.multiply_inplace(encrypted_matrix,encrypted_matrix2);
+    evaluator.relinearize_inplace(encrypted_matrix, Relin_key_round_two);
+
+    Ciphertext ct_dup;
+    evaluator.rotate_vector(encrypted_matrix,5,cRotKeys,ct_dup);
+    
+    // evaluator.add_plain_inplace(encrypted_matrix, plain_matrix2);
+    Plaintext plain_result4;
+    decryptor.decrypt(ct_dup, plain_result4);
+    vector<uint64_t> pod_result4;
+    batch_encoder.decode(plain_result4, pod_result4);
+    // cout << "    + Result plaintext matrix ...... Correct." << endl;
+    print_vector(pod_result4, 6);
+    // print_line(__LINE__);
+    // cout << "Element-wise square" << endl;
+    // evaluator.square_inplace(encrypted_matrix);
+    // print_line(__LINE__);
+    // cout << "Using relin key after square" << endl;
+    // evaluator.relinearize_inplace(encrypted_matrix, Relin_key_round_two);
+
+    // /*
+    // How much noise budget do we have left?
+    // */
+    // cout << "    + Noise budget in result: " << decryptor.invariant_noise_budget(encrypted_matrix) << " bits" << endl;
+
+    // /*
+    // We decrypt and decompose the plaintext to recover the result as a matrix.
+    // */
+    // Plaintext plain_result;
+    // print_line(__LINE__);
+    // cout << "Decrypt and decode result." << endl;
+    // decryptor.decrypt(encrypted_matrix, plain_result);
+    // batch_encoder.decode(plain_result, pod_result);
+    // cout << "    + Result " << endl;
+    // print_matrix(pod_result, row_size);
 
     /*
-    It is very important to understand how this example works since in the CKKS
-    scheme modulus switching has a much more fundamental purpose and the next
-    examples will be difficult to understand unless these basic properties are
-    totally clear.
+    Batching allows us to efficiently use the full plaintext polynomial when the
+    desired encrypted computation is highly parallelizable. However, it has not
+    solved the other problem mentioned in the beginning of this file: each slot
+    holds only an integer modulo plain_modulus, and unless plain_modulus is very
+    large, we can quickly encounter data type overflow and get unexpected results
+    when integer computations are desired. Note that overflow cannot be detected
+    in encrypted form. The CKKS scheme (and the CKKSEncoder) addresses the data
+    type overflow issue, but at the cost of yielding only approximate results.
     */
 }

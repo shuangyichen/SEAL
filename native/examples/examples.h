@@ -128,7 +128,7 @@ inline std::ostream &operator<<(std::ostream &stream, seal::parms_id_type parms_
 Helper function: Prints a vector of floating-point values.
 */
 template <typename T>
-inline void print_vector(std::vector<T> vec, std::size_t print_size = 4, int prec = 3)
+inline void print_vector(std::vector<T> vec, std::size_t print_size = 5, int prec = 3)
 {
     /*
     Save the formatting information for std::cout.
