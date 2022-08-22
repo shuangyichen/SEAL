@@ -99,6 +99,11 @@ namespace seal
             destination = generate_relin_key_round_one(false);
         }
 
+        SEAL_NODISCARD inline Serializable<RelinKeys> create_relin_keys_round_one()
+        {
+            destination = generate_relin_key_round_one(true);
+        }
+
         void create_relin_keys_round_two(RelinKeys &destination, RelinKeys &round_one_share)
         {
             destination = generate_relin_key_round_two(round_one_share,false);
