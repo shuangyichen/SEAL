@@ -93,7 +93,7 @@ void example_levels()
     print_line(__LINE__);
     cout <<"Server aggregating rotation keys to generate common rotation key"<< endl;
     GaloisKeys cRotKeys;
-    keygen.gen_common_galois_keys(galois_keys_set,3,cRotKeys);
+    keygen.gen_common_galois_keys(galois_keys_set,steps, 3,cRotKeys);
    
     print_line(__LINE__);
     cout <<"Server aggregating relinearization key share of round 1 to generate common relin key share of round 1"<< endl;
@@ -216,32 +216,104 @@ void example_levels()
     the sum.
     */
     // print_line(__LINE__);
-    Plaintext plain_result2;
-    print_line(__LINE__);
-    cout << "Encode plaintext to plain_vector2:" << endl;
-    batch_encoder.encode(pod_matrix2, plain_result2);
+    // Plaintext plain_result2;
+ 
     Ciphertext encrypted_matrix2;
     print_line(__LINE__);
     cout << "Encrypt plain_vector2 to encrypted_vector2." << endl;
-    encryptor.encrypt(plain_result2, encrypted_matrix2);
+    encryptor.encrypt(plain_matrix2, encrypted_matrix2);
     // vector<uint64_t> pod_result4;
     // cout << "Sum, square, and relinearize." << endl;
     // encrypted_matrix2
     print_line(__LINE__);
     cout << "Multiply encrypted_vector with encrypted_vector2." << endl;
     evaluator.multiply_inplace(encrypted_matrix,encrypted_matrix2);
+
+    cout << "Scalar multiplication result." << endl;
+    Plaintext result_inter;
+    decryptor.decrypt(encrypted_matrix,result_inter);
+    vector<uint64_t> pod_result;
+    batch_encoder.decode(result_inter,pod_result);
+    cout << endl;
+    cout << "Element-wise multiplication result :" << endl;
+    print_vector(pod_result, 6);
+
+
+    cout << "Relinearization after multiplication." << endl;
     evaluator.relinearize_inplace(encrypted_matrix, Relin_key_round_two);
 
     Ciphertext ct_dup;
-    evaluator.rotate_vector(encrypted_matrix,5,cRotKeys,ct_dup);
+    // cout << "Copy." << endl;
+    evaluator.rotate_rows(encrypted_matrix,5,cRotKeys,ct_dup);
+    evaluator.add_inplace(ct_dup,encrypted_matrix);
+  
+    Ciphertext rot_res;
+    evaluator.rotate_rows(encrypted_matrix,1,cRotKeys,rot_res);
+    Plaintext result_rot_;
+    decryptor.decrypt(rot_res,result_rot_);
+    batch_encoder.decode(result_rot_,pod_result);
+    cout << endl;
+    cout << "Rotate 1 steps to the left" << endl;
+    print_vector(pod_result, 6);
+    evaluator.add_inplace(ct_dup,rot_res);
+    for (int i=2;i<5;i++){
+        // Ciphertext tmp;
+        evaluator.rotate_rows(rot_res,1,cRotKeys,rot_res);
+        evaluator.add_inplace(ct_dup,rot_res);
+    }
+
+
+    cout << endl;
+    cout << "Rotate 2 steps to the left" << endl;
+    cout << endl;
+    cout << "    [ 3, 8, 5, 0, 0, 0, ..., 0, 0, 0, 0, 0, 0 ]" << endl;
+    cout << endl;
+    cout << "Rotate 3 steps to the left" << endl;
+    cout << endl;
+    cout << "    [ 8, 5, 0, 0, 0, 0, ..., 0, 0, 0, 0, 0, 0 ]" << endl;
+    cout << endl;
+    cout << "Rotate 4 steps to the left" << endl;
+    cout << endl;
+    cout << "    [ 5, 0, 0, 0, 0, 0, ..., 0, 0, 0, 0, 0, 0 ]" << endl;
+
+
+     Plaintext add;
+    decryptor.decrypt(ct_dup,add);
+    batch_encoder.decode(add,pod_result);
+    cout << endl;
+    cout << "Rotation addition result" << endl;
+    print_vector(pod_result, 6);
+
+
+    vector<uint64_t> pod_matrix3(slot_count, 0ULL);
+    pod_matrix3[0] = 1ULL;
+    Plaintext plain_matrix3;
+    batch_encoder.encode(pod_matrix3, plain_matrix3);
+    cout << endl;
+    cout << "Masking vector:" << endl;
+    print_vector(pod_matrix3, 6);
+    cout << "Encoding masking vector ..." << endl;
+    cout << endl;
+    cout << "Multiply the addition result with the masking vector ..." << endl;
+    evaluator.multiply_plain_inplace(ct_dup,plain_matrix3);
+    Plaintext result_pt;
+    decryptor.decrypt(ct_dup,result_pt);
+    // vector<uint64_t> pod_result;
+    batch_encoder.decode(result_pt,pod_result);
+    cout << endl;
+    cout << "Inner product result :" << endl;
+    print_vector(pod_result, 1);
+
     
+    
+
     // evaluator.add_plain_inplace(encrypted_matrix, plain_matrix2);
-    Plaintext plain_result4;
-    decryptor.decrypt(ct_dup, plain_result4);
-    vector<uint64_t> pod_result4;
-    batch_encoder.decode(plain_result4, pod_result4);
-    // cout << "    + Result plaintext matrix ...... Correct." << endl;
-    print_vector(pod_result4, 6);
+    // Plaintext plain_result4;
+    // decryptor.decrypt(ct_dup, plain_result4);
+    // vector<uint64_t> pod_result4;
+    // batch_encoder.decode(plain_result4, pod_result4);
+    // // cout << "    + Result plaintext matrix ...... Correct." << endl;
+    // print_vector(pod_result4, 6);
     // print_line(__LINE__);
     // cout << "Element-wise square" << endl;
     // evaluator.square_inplace(encrypted_matrix);

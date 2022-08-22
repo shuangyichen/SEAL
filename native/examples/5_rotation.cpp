@@ -91,7 +91,7 @@ void example_rotation_bfv()
     // cout<< *CPK.data().data()<<endl;
 
     GaloisKeys cRotKeys;
-    keygen.gen_common_galois_keys(galois_keys_set,3,cRotKeys);
+    keygen.gen_common_galois_keys(galois_keys_set,steps,3,cRotKeys);
     cout <<"Generate collective rotation key "<< endl;
 
     RelinKeys Relin_key_round_one;

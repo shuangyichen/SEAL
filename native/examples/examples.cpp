@@ -22,10 +22,6 @@ int main()
         cout << "| 2. Relin key use           | 2_.cpp                     |" << endl;
         cout << "| 3. Inner product           | 3_.cpp                     |" << endl;
         cout << "|    of 2 vectors            |                            |" << endl;
-        cout << "| 4. CKKS Basics             | 4_ckks_basics.cpp          |" << endl;
-        cout << "| 5. Rotation                | 5_rotation.cpp             |" << endl;
-        cout << "| 6. Serialization           | 6_serialization.cpp        |" << endl;
-        cout << "| 7. Performance Test        | 7_performance.cpp          |" << endl;
         cout << "+----------------------------+----------------------------+" << endl;
 
         /*
@@ -42,7 +38,7 @@ int main()
         bool valid = true;
         do
         {
-            cout << endl << "> Run example (1 ~ 7) or exit (0): ";
+            cout << endl << "> Run example (1 ~ 3) or exit (0): ";
             if (!(cin >> selection))
             {
                 valid = false;
@@ -57,7 +53,7 @@ int main()
             }
             if (!valid)
             {
-                cout << "  [Beep~~] valid option: type 0 ~ 7" << endl;
+                cout << "  [Beep~~] valid option: type 0 ~ 3" << endl;
                 cin.clear();
                 cin.ignore(numeric_limits<streamsize>::max(), '\n');
             }
