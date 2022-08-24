@@ -336,6 +336,11 @@ namespace seal
             create_galois_keys(context_.key_context_data()->galois_tool()->get_elts_all(), destination);
         }
 
+        inline void create_galois_keys_crp(GaloisKeys &destination)
+        {
+            create_galois_keys_crp(context_.key_context_data()->galois_tool()->get_elts_all(), destination);
+        }
+
         /**
         Generates and returns Galois keys as a serializable object. Every time
         this function is called, new Galois keys will be generated.
