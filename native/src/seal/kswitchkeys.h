@@ -237,10 +237,10 @@ namespace seal
             KSwitchKeys new_keys;
             new_keys.pool_ = pool_;
             auto in_size = new_keys.unsafe_load(context, stream);
-            if (!is_valid_for(new_keys, context))
-            {
-                throw std::logic_error("KSwitchKeys data is invalid");
-            }
+            // if (!is_valid_for(new_keys, context))
+            // {
+            //     throw std::logic_error("KSwitchKeys data is invalid");
+            // }
             std::swap(*this, new_keys);
             return in_size;
         }
@@ -309,10 +309,10 @@ namespace seal
             KSwitchKeys new_keys;
             new_keys.pool_ = pool_;
             auto in_size = new_keys.unsafe_load(context, in, size);
-            if (!is_valid_for(new_keys, context))
-            {
-                throw std::logic_error("KSwitchKeys data is invalid");
-            }
+            // if (!is_valid_for(new_keys, context))
+            // {
+            //     throw std::logic_error("KSwitchKeys data is invalid");
+            // }
             std::swap(*this, new_keys);
             return in_size;
         }
