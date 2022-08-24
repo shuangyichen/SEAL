@@ -72,6 +72,8 @@ namespace seal
         @throws std::invalid_argument if encrypted is not in the default NTT form
         */
         void decrypt(const Ciphertext &encrypted, Plaintext &destination);
+        void aggregate_partial_decryption(Ciphertext encrypted,std::vector<Ciphertext> &partialDecryption,Plaintext &destination,int party_num);
+        void distributed_decrypt(const Ciphertext &encrypted, Ciphertext &destination);
 
         /*
         Computes the invariant noise budget (in bits) of a ciphertext. The

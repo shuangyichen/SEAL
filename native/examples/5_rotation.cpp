@@ -50,7 +50,7 @@ void example_rotation_bfv()
     vector<int> steps(1,3);
     SKS[0] = keygen1.secret_key();
     keygen1.create_public_key_crp(PKS[0]);
-    keygen1.create_galois_keys_crp(steps,galois_keys_set[0]);
+    // keygen1.create_galois_keys_crp(steps,galois_keys_set[0]);
     keygen1.create_relin_keys_round_one(RKS_round_one[0]);
     // auto PK0 = keygen1.create_public_key_crp();
     // auto rotKey0 = keygen1.create_galois_keys_crp(steps);
@@ -60,14 +60,14 @@ void example_rotation_bfv()
     // auto rotKey1 = keygen2.create_galois_keys_crp(steps);
 
     keygen2.create_public_key_crp(PKS[1]);
-    keygen2.create_galois_keys_crp(steps,galois_keys_set[1]);
+    // keygen2.create_galois_keys_crp(steps,galois_keys_set[1]);
     keygen2.create_relin_keys_round_one(RKS_round_one[1]);
 
     SKS[2] = keygen3.secret_key();
     keygen3.create_public_key_crp(PKS[2]);
     // auto PK2 = keygen3.create_public_key_crp();
     // auto rotKey2 = keygen3.create_galois_keys_crp(steps);
-    keygen3.create_galois_keys_crp(steps,galois_keys_set[2]);
+    // keygen3.create_galois_keys_crp(steps,galois_keys_set[2]);
     keygen3.create_relin_keys_round_one(RKS_round_one[2]);
 
 
@@ -90,15 +90,15 @@ void example_rotation_bfv()
     // cout<< *CPK.data().data(1)<<endl;
     // cout<< *CPK.data().data()<<endl;
 
-    GaloisKeys cRotKeys;
-    keygen.gen_common_galois_keys(galois_keys_set,3,cRotKeys);
-    cout <<"Generate collective rotation key "<< endl;
+    // GaloisKeys cRotKeys;
+    // keygen.gen_common_galois_keys(galois_keys_set,3,cRotKeys);
+    // cout <<"Generate collective rotation key "<< endl;
 
     RelinKeys Relin_key_round_one;
     keygen.aggregate_relin_keys_round_one(Relin_key_round_one,RKS_round_one,3);
     cout <<"Aggregate Relin key share round one "<< endl;
 
-    vector<RelinKeys> RKS_round_two;
+    vector<RelinKeys> RKS_round_two(3);
     keygen1.create_relin_keys_round_two(RKS_round_two[0],Relin_key_round_one);
     keygen2.create_relin_keys_round_two(RKS_round_two[1],Relin_key_round_one);
     keygen3.create_relin_keys_round_two(RKS_round_two[2],Relin_key_round_one);
@@ -108,7 +108,10 @@ void example_rotation_bfv()
     cout <<"Aggregate Relin key share round two "<< endl;
     Encryptor encryptor(context, CPK);
     Evaluator evaluator(context);
-    Decryptor decryptor(context, CSK);
+    Decryptor decryptor0(context, SKS[0]);
+    Decryptor decryptor1(context, SKS[1]);
+    Decryptor decryptor2(context, SKS[2]);
+    Decryptor decryptor(context,CSK);
 
     print_line(__LINE__);
     int x = 6;
@@ -120,8 +123,14 @@ void example_rotation_bfv()
     encryptor.encrypt(x_plain, x_encrypted);
     Plaintext x_decrypted;
     cout << "    + decryption of x_encrypted: ";
-    decryptor.decrypt(x_encrypted, x_decrypted);
-    cout << "0x" << x_decrypted.to_string() << " ...... Correct." << endl;
+    // vector<Ciphertext> Partial_Decryption(3);
+    // cout << " DIstribute decryption    "<<endl;
+    // vector<Ciphertext> Partial_Decryption(3);
+    // decryptor0.distributed_decrypt(x_encrypted, Partial_Decryption[0]);
+    // decryptor1.distributed_decrypt(x_encrypted, Partial_Decryption[1]);
+    // decryptor2.distributed_decrypt(x_encrypted, Partial_Decryption[2]);
+    // decryptor.aggregate_partial_decryption(x_encrypted,Partial_Decryption,x_decrypted,3);
+    // cout << "0x" << x_decrypted.to_string() << " ...... Correct." << endl;
 
 
     BatchEncoder batch_encoder(context);
@@ -157,7 +166,11 @@ void example_rotation_bfv()
     evaluator.relinearize_inplace(encrypted_matrix, Relin_key_round_two);
     
     Plaintext plain_result0;
-    decryptor.decrypt(encrypted_matrix, plain_result0);
+    vector<Ciphertext> Partial_Decryption(3);
+    decryptor0.distributed_decrypt(encrypted_matrix, Partial_Decryption[0]);
+    decryptor1.distributed_decrypt(encrypted_matrix, Partial_Decryption[1]);
+    decryptor2.distributed_decrypt(encrypted_matrix, Partial_Decryption[2]);
+    decryptor.aggregate_partial_decryption(encrypted_matrix,Partial_Decryption,plain_result0,3);
     batch_encoder.decode(plain_result0, pod_matrix);
     print_matrix(pod_matrix, row_size);
     /*
@@ -169,16 +182,16 @@ void example_rotation_bfv()
     /*
     Now rotate both matrix rows 3 steps to the left, decrypt, decode, and print.
     */
-    print_line(__LINE__);
-    cout << "Rotate rows 3 steps left." << endl;
-    evaluator.rotate_rows_inplace(encrypted_matrix, 3, cRotKeys);
-    Plaintext plain_result;
-    cout << "    + Noise budget after rotation: " << decryptor.invariant_noise_budget(encrypted_matrix) << " bits"
-         << endl;
-    cout << "    + Decrypt and decode ...... Correct." << endl;
-    decryptor.decrypt(encrypted_matrix, plain_result);
-    batch_encoder.decode(plain_result, pod_matrix);
-    print_matrix(pod_matrix, row_size);
+    // print_line(__LINE__);
+    // cout << "Rotate rows 3 steps left." << endl;
+    // evaluator.rotate_rows_inplace(encrypted_matrix, 3, cRotKeys);
+    // Plaintext plain_result;
+    // cout << "    + Noise budget after rotation: " << decryptor.invariant_noise_budget(encrypted_matrix) << " bits"
+    //      << endl;
+    // cout << "    + Decrypt and decode ...... Correct." << endl;
+    // decryptor.decrypt(encrypted_matrix, plain_result);
+    // batch_encoder.decode(plain_result, pod_matrix);
+    // print_matrix(pod_matrix, row_size);
 
     /*
     We can also rotate the columns, i.e., swap the rows.

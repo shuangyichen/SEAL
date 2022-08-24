@@ -147,6 +147,106 @@ namespace seal
         destination.resize(max(plain_coeff_count, size_t(1)));
     }
 
+    void Decryptor::aggregate_partial_decryption(Ciphertext encrypted,std::vector<Ciphertext> &partialDecryption,Plaintext &destination, int party_num)
+    {
+        auto &context_data = *context_.get_context_data(partialDecryption[0].parms_id());
+        auto &parms = context_data.parms();
+        auto &coeff_modulus = parms.coeff_modulus();
+        size_t coeff_count = parms.poly_modulus_degree();
+        size_t coeff_modulus_size = coeff_modulus.size();
+        size_t key_coeff_modulus_size = context_.key_context_data()->parms().coeff_modulus().size();
+        size_t encrypted_size = partialDecryption[0].size();
+        auto is_ntt_form = partialDecryption[0].is_ntt_form();
+
+        // auto ntt_tables = context_data.small_ntt_tables();
+
+        SEAL_ALLOCATE_ZERO_GET_RNS_ITER(tmp_dest_modq, coeff_count, coeff_modulus_size, pool_);
+        // compute_secret_key_array(encrypted_size - 1);
+
+        
+        ConstRNSIter c0(encrypted.data(0), coeff_count);
+        if (!is_ntt_form){
+        for (int i = 0; i <3; ++i) {
+            auto &context_data_ = *context_.get_context_data(partialDecryption[i].parms_id());
+            auto ntt_tables = context_data_.small_ntt_tables();
+
+            ConstRNSIter c1(partialDecryption[i].data(1), coeff_count);
+            SEAL_ITERATE(
+                    iter(c1, coeff_modulus, tmp_dest_modq), coeff_modulus_size,
+                    [&](auto I) {
+                            add_poly_coeffmod(get<2>(I),get<0>(I), coeff_count,get<1>(I),get<2>(I));
+                        });
+        }
+        SEAL_ITERATE(
+            iter(c0,coeff_modulus,tmp_dest_modq), coeff_modulus_size,
+            [&](auto I) {
+                add_poly_coeffmod(get<2>(I),get<0>(I), coeff_count,get<1>(I),get<2>(I));
+                });
+        } // auto ntt_tables = context_data.small_ntt_tables();
+
+        destination.parms_id() = parms_id_zero;
+        destination.resize(coeff_count);
+
+        // Divide scaling variant using BEHZ FullRNS techniques
+        context_data.rns_tool()->decrypt_scale_and_round(tmp_dest_modq, destination.data(), pool_);
+
+        // How many non-zero coefficients do we really have in the result?
+        size_t plain_coeff_count = get_significant_uint64_count_uint(destination.data(), coeff_count);
+
+        // Resize destination to appropriate size
+        destination.resize(max(plain_coeff_count, size_t(1)));
+    }
+
+    void Decryptor::distributed_decrypt(const Ciphertext &encrypted, Ciphertext &destination)
+    {
+        // destination = encrypted;
+        auto &context_data = *context_.get_context_data(encrypted.parms_id());
+        auto &parms = context_data.parms();
+        auto &coeff_modulus = parms.coeff_modulus();
+        size_t coeff_count = parms.poly_modulus_degree();
+        size_t coeff_modulus_size = coeff_modulus.size();
+        size_t key_coeff_modulus_size = context_.key_context_data()->parms().coeff_modulus().size();
+        size_t encrypted_size = encrypted.size();
+        auto is_ntt_form = encrypted.is_ntt_form();
+
+        auto ntt_tables = context_data.small_ntt_tables();
+        SEAL_ALLOCATE_ZERO_GET_RNS_ITER(tmp_dest_modq, coeff_count, coeff_modulus_size, pool_);
+        // Make sure we have enough secret key powers computed
+        compute_secret_key_array(encrypted_size - 1);
+        if (encrypted_size == 2)
+        {
+            ConstRNSIter secret_key_array(secret_key_array_.get(), coeff_count);
+            ConstRNSIter c0(encrypted.data(0), coeff_count);
+            ConstRNSIter c1(encrypted.data(1), coeff_count);
+            if (is_ntt_form)
+            {
+                SEAL_ITERATE(
+                    iter(c0, c1, secret_key_array, coeff_modulus, tmp_dest_modq), coeff_modulus_size, [&](auto I) {
+                        // put < c_1 * s > mod q in destination
+                        dyadic_product_coeffmod(get<1>(I), get<2>(I), coeff_count, get<3>(I), get<4>(I));
+                    });
+            }
+            else
+            {
+                SEAL_ITERATE(
+                    iter(c0, c1, secret_key_array, coeff_modulus, ntt_tables, tmp_dest_modq), coeff_modulus_size,
+                    [&](auto I) {
+                        set_uint(get<1>(I), coeff_count, get<5>(I));
+                        // Transform c_1 to NTT form
+                        ntt_negacyclic_harvey_lazy(get<5>(I), get<4>(I));
+                        // put < c_1 * s > mod q in destination
+                        dyadic_product_coeffmod(get<5>(I), get<2>(I), coeff_count, get<3>(I), get<5>(I));
+                        // Transform back
+                        inverse_ntt_negacyclic_harvey(get<5>(I), get<4>(I));
+                    });
+            }
+        }
+        // destination.destination.resize(context_, parms_id, 2);() = encrypted_size;
+
+        destination.resize(context_, context_.first_parms_id(), 2);
+        set_poly_array(tmp_dest_modq, 1, coeff_count, coeff_modulus_size, destination.data(1));      
+    }
+
     void Decryptor::ckks_decrypt(const Ciphertext &encrypted, Plaintext &destination, MemoryPoolHandle pool)
     {
         if (!encrypted.is_ntt_form())
