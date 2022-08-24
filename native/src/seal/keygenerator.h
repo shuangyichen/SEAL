@@ -262,12 +262,17 @@ namespace seal
         keyswitching
         @throws std::invalid_argument if the step counts are not valid
         */
-        void gen_common_galois_keys(std::vector<GaloisKeys> &rotKeys, int party_num, GaloisKeys &dest)
+        void gen_common_galois_keys(std::vector<GaloisKeys> &rotKeys, std::vector<int> steps, int party_num, GaloisKeys &dest)
         {
-            std::vector<int> steps = {3};
+            // std::vector<int> steps = {3};
             // std::cout<<context_.key_context_data()->galois_tool()->get_elts_from_steps(steps) <<std::endl;
             dest = gen_common_galois_keys(context_.key_context_data()->galois_tool()->get_elts_from_steps(steps),rotKeys, party_num);
             // dest = gen_common_galois_keys(context_.key_context_data()->galois_tool()->get_elts_all(),rotKeys, party_num);
+        }
+
+        inline void gen_common_galois_keys(std::vector<GaloisKeys> &rotKeys,  int party_num, GaloisKeys &dest)
+        {
+             dest = gen_common_galois_keys(context_.key_context_data()->galois_tool()->get_elts_all(),rotKeys, party_num);
         }
 
 
