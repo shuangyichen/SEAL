@@ -111,7 +111,7 @@ void example_rotation_bfv()
     Decryptor decryptor0(context, SKS[0]);
     Decryptor decryptor1(context, SKS[1]);
     Decryptor decryptor2(context, SKS[2]);
-    Decryptor decryptor(context,CSK);
+    Decryptor decryptor(context);
 
     print_line(__LINE__);
     int x = 6;

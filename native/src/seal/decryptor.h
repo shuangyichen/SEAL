@@ -60,6 +60,8 @@ namespace seal
         @throws std::invalid_argument if secret_key is not valid
         */
         Decryptor(const SEALContext &context, const SecretKey &secret_key);
+        Decryptor(const SEALContext &context);
+
 
         /*
         Decrypts a Ciphertext and stores the result in the destination parameter.

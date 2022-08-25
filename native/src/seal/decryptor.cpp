@@ -75,6 +75,20 @@ namespace seal
         secret_key_array_size_ = 1;
     }
 
+    Decryptor::Decryptor(const SEALContext &context) : context_(context)
+    {
+        // Verify parameters
+        if (!context_.parameters_set())
+        {
+            throw invalid_argument("encryption parameters are not set correctly");
+        }
+        auto &parms = context_.key_context_data()->parms();
+        auto &coeff_modulus = parms.coeff_modulus();
+        size_t coeff_count = parms.poly_modulus_degree();
+        size_t coeff_modulus_size = coeff_modulus.size();
+
+    }
+
     void Decryptor::decrypt(const Ciphertext &encrypted, Plaintext &destination)
     {
         // Verify that encrypted is valid.
