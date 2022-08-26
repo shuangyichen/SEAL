@@ -331,6 +331,7 @@ namespace seal
         for (size_t i = 0; i < num_keys; ++i) {
              output_rel_key(rks[0].data()[i],ref.data()[i]);
         }
+        ref.parms_id() = context_data.parms_id();
         return ref;
     }
     void KeyGenerator::output_rel_key(vector<PublicKey> &rlk,vector<PublicKey> &destination)
