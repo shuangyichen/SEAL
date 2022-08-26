@@ -285,23 +285,9 @@ namespace seal
             for (size_t j = 1; j <party_num; ++j) {
             add_rel_key(rks[j].data()[i],rks[0].data()[i]);//rk1.data()[i]);
             }
-        
         }
-    //     rk1.data().resize(context_, context_data.parms_id(), encrypted_size);
-    //     rk1.data().is_ntt_form() = true;
-    //     rk1.data().scale() = 1.0;
-
-
-    //     for (size_t j = 0; j < coeff_modulus_size; j++){
-    //         for (int i=0;i<party_num;++i){
-    //             add_poly_coeffmod(rk1.data().data()+j*coeff_count,rks[i].data().data()+j*coeff_count,coeff_count,coeff_modulus[j],rk1.data().data()+j*coeff_count);
-    //             add_poly_coeffmod(rk1.data().data(1)+j*coeff_count,rks[i].data().data(1)+j*coeff_count,coeff_count,coeff_modulus[j],rk1.data().data(1)+j*coeff_count);
-    //     }
-    //     }
         rk1 = rks[0];
-        // cout<< *(rks[0].data()[0][3].data().data() +1)<<endl;
-        // cout<< *(rk1.data()[0][3].data().data() +1)<<endl;
-        // cout<< &rk1 <<endl;
+
         rk1.parms_id() = context_data.parms_id();
         return rk1;
     }
@@ -331,7 +317,7 @@ namespace seal
         for (size_t i = 0; i < num_keys; ++i) {
              output_rel_key(rks[0].data()[i],ref.data()[i]);
         }
-        ref.parms_id() = context_data.parms_id();
+        // ref.parms_id() = context_data.parms_id();
         return ref;
     }
     void KeyGenerator::output_rel_key(vector<PublicKey> &rlk,vector<PublicKey> &destination)

@@ -808,10 +808,10 @@ namespace seal
         {
             throw invalid_argument("encrypted is not valid for encryption parameters");
         }
-        if (relin_keys.parms_id() != context_.key_parms_id())
-        {
-            throw invalid_argument("relin_keys is not valid for encryption parameters");
-        }
+        // if (relin_keys.parms_id() != context_.key_parms_id())
+        // {
+        //     throw invalid_argument("relin_keys is not valid for encryption parameters");
+        // }
 
         size_t encrypted_size = encrypted.size();
 
